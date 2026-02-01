@@ -94,3 +94,16 @@ def delete_document_relationship(
     """
     session.query(DocumentRelationship).filter_by(id=relationship_id).delete()
     session.flush()
+
+def list_outgoing_relationships(session: Session, document_id: str) -> list[DocumentRelationship]:
+    """
+    Return all outgoing relationships from a given document.
+
+    Args:
+        session: SQLAlchemy Session (injected)
+        document_id: UUID of the source DocumentNode
+
+    Returns:
+        List of DocumentRelationship instances where `from_document_id` == document_id
+    """
+    return session.query(DocumentRelationship).filter_by(from_document_id=document_id).all()
