@@ -1,6 +1,6 @@
 ---
 
-## ✅ **Corrected & final testing model**
+## ✅ **Corrected & final testing model** MS3
 
 ### 🧪 CI (GitHub Actions / local pytest without Docker)
 
@@ -289,6 +289,281 @@ docker logs ingestion_service
 | docker compose up | Docker     | Reality (DB + pgvector) |
 | alembic upgrade   | Docker     | Schema truth            |
 | pytest            | Host       | Code correctness        |
+
+---
+
+ expanding  current `testing.md` to include MS3 updates (DocumentRelationship table, migrations, ORM, etc.) while keeping all  prior details. :
+
+---
+
+# DOCS\testing.md
+
+---
+
+## ✅ Corrected & final testing model
+
+### 🧪 CI (GitHub Actions / local pytest without Docker)
+
+* ❌ Docker
+* ❌ Postgres
+* ❌ Ollama
+* ❌ Real embeddings
+* ✅ **Pure unit tests only**
+* ✅ Mock boundaries where needed
+* ✅ Fast, deterministic
+
+---
+
+### 🧪 Integration tests (local / dev only)
+
+✅ Docker available
+✅ Postgres + pgvector
+✅ Ollama (real embeddings)
+❌ No mock embedder
+❌ No synthetic embeddings
+✅ End-to-end ingestion realism
+
+This is the **correct** interpretation of your intent.
+
+> Integration tests are *truth tests*, not speed tests.
+
+---
+
+## Why this is the right call
+
+Your system has a **specific risk profile**:
+
+* pgvector dimensionality must match embedder output
+* Embedding provider behavior matters (batching, floats, normalization)
+* Ingestion → embedding → persistence → retrieval must be coherent
+
+Mocking or synthesizing embeddings **hides real failures** like:
+
+* wrong dimension
+* wrong dtype
+* serialization issues
+* provider drift
+
+Hence, **integration tests should use Ollama**.
+
+CI is where mocks belong. Integration tests are where *reality* belongs.
+
+---
+
+## What this means concretely
+
+### 1️⃣ `docker-compose.test.yml` (integration)
+
+* Must include:
+
+  * Postgres (pgvector)
+  * ingestion_service
+  * vector_store_service
+
+* Must assume:
+
+  * Ollama running on **host**
+
+* Must **not** include Ollama container
+
+You already noted the key detail 👇
+
+```text
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+```
+
+---
+
+### ✅ Mental contract
+
+| Layer             | Embeddings | DB         | Docker |
+| ----------------- | ---------- | ---------- | ------ |
+| Unit tests        | ❌ mocked   | ❌          | ❌      |
+| Integration tests | ✅ Ollama   | ✅ pgvector | ✅      |
+| Dev / demo        | ✅ Ollama   | ✅ pgvector | ✅      |
+
+No overlap, no confusion.
+
+---
+
+## Subtle but important implication
+
+> “Integration tests will not run in CI”
+
+That is **not a weakness**, it is:
+
+* intentional
+* explicit
+* documented
+* professional
+
+Nightly jobs or manual workflows can run integration tests later, but **not CI-by-default**.
+
+---
+
+## Alembic & Integration Testing Notes (MS2 → MS3)
+
+* Alembic migrations require `DATABASE_URL`.
+
+* No DB URL is hardcoded in `alembic.ini`.
+
+* Integration tests assume:
+
+  * Docker
+  * Postgres + pgvector
+  * Ollama running on host (`host.docker.internal`)
+
+* Schema `ingestion_service` is created automatically by Alembic.
+
+* Alembic version table lives in the same schema.
+
+* MS3 added `document_relationships` table with FKs to `document_nodes`.
+
+> Note for future: if `alembic revision --autogenerate` runs in CI, add this to `env.py`:
+
+```python
+if os.environ.get("CI") == "true":
+    context.configure(
+        compare_type=False,
+        compare_server_default=False,
+    )
+```
+
+---
+
+## PowerShell: Exact execution sequence
+
+### ✅ One-time prerequisites
+
+1. Docker Desktop running:
+
+```powershell
+docker version
+```
+
+2. Ollama running on host:
+
+```powershell
+ollama list
+```
+
+> If this works, `http://localhost:11434` is alive — Docker will reach it via `host.docker.internal`.
+
+---
+
+### 🧪 Step 1 — Start integration test stack
+
+```powershell
+docker compose -f docker-compose.test.yml up -d --build
+```
+
+* starts **Postgres + pgvector**
+* builds + starts **ingestion_service**
+* waits for DB healthcheck
+* does **not** start Ollama (correct)
+
+---
+
+### 🧪 Step 2 — Verify containers
+
+```powershell
+docker ps
+```
+
+Should show at least:
+
+* `ingestion-db-test`
+* `ingestion_service`
+
+Status: `healthy` (or `running` for ingestion_service).
+
+---
+
+### 🧪 Step 3 — Run Alembic migrations
+
+From repo root:
+
+```powershell
+docker compose -f docker-compose.test.yml exec ingestion_service `
+  alembic -x db_url=$env:DATABASE_URL upgrade head
+```
+
+Expected:
+
+* schema `ingestion_service` exists
+* tables: `document_nodes`, `vector_chunks`, `document_relationships`
+* pgvector extension enabled
+
+If this fails → **integration test setup bug**.
+
+---
+
+### 🧪 Step 4 — Run integration tests
+
+From repo root:
+
+```powershell
+uv run pytest ingestion_service -m "integration"
+```
+
+✔ Uses:
+
+* Dockerized Postgres
+* Real pgvector
+* Real Ollama embeddings
+* Your `conftest.py` DB session
+
+❌ Skips unit tests
+❌ Skips CI-only tests
+
+---
+
+### 🧼 Optional cleanup
+
+```powershell
+docker compose -f docker-compose.test.yml down -v
+```
+
+Removes:
+
+* containers
+* test volumes
+* clean slate next time
+
+---
+
+### 🔎 Fast diagnostics
+
+**Check DB tables**:
+
+```powershell
+docker compose -f docker-compose.test.yml exec postgres psql `
+  -U ingestion_user -d ingestion_test
+```
+
+```sql
+\dt ingestion_service.*;
+```
+
+**Check ingestion_service logs**:
+
+```powershell
+docker logs ingestion_service
+```
+
+---
+
+### 🧩 Summary Table
+
+| Step              | Runs where | Purpose                 |
+| ----------------- | ---------- | ----------------------- |
+| docker compose up | Docker     | Reality (DB + pgvector) |
+| alembic upgrade   | Docker     | Schema truth            |
+| pytest            | Host       | Code correctness        |
+
+---
+
+This fully documents **MS2 → MS3 integration** workflow, including DocumentRelationships.
 
 ---
 
