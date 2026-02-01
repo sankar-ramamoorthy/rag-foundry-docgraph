@@ -1,6 +1,7 @@
 # ingestion_service/src/core/models_v2/document_node.py
 """
 ORM model for DocumentNodes table using pgvector.
+Includes bidirectional relationships to DocumentRelationship.
 """
 
 from typing import TYPE_CHECKING
@@ -13,6 +14,7 @@ from pgvector.sqlalchemy import Vector  # pgvector type
 
 if TYPE_CHECKING:
     from .vector_chunk import VectorChunk
+    from .document_relationship import DocumentRelationship
 
 
 class DocumentNode(Base):
@@ -28,6 +30,8 @@ class DocumentNode(Base):
         ingestion_id: Foreign key to the ingestion request.
         doc_type: Type/category of the document.
         vector_chunks: List of related VectorChunks.
+        outgoing_relationships: List of DocumentRelationship where this node is the source.
+        incoming_relationships: List of DocumentRelationship where this node is the target.
     """
     __tablename__ = "document_nodes"
     __table_args__ = {"schema": "ingestion_service"}
@@ -42,3 +46,20 @@ class DocumentNode(Base):
 
     # Relationship to VectorChunks
     vector_chunks: "list[VectorChunk]" = relationship("VectorChunk", back_populates="document_node")
+
+    # -----------------------------
+    # Relationships to DocumentRelationship
+    # -----------------------------
+    outgoing_relationships: "list[DocumentRelationship]" = relationship(
+        "DocumentRelationship",
+        foreign_keys="DocumentRelationship.from_document_id",
+        back_populates="from_node",
+        cascade="all, delete-orphan",
+    )
+
+    incoming_relationships: "list[DocumentRelationship]" = relationship(
+        "DocumentRelationship",
+        foreign_keys="DocumentRelationship.to_document_id",
+        back_populates="to_node",
+        cascade="all, delete-orphan",
+    )
