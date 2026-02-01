@@ -123,3 +123,172 @@ But **not** CI-by-default.
 
 
 ---
+Alembic & Integration Testing Notes
+
+Alembic migrations are configured to require DATABASE_URL
+No database URL is hardcoded in alembic.ini
+Integration tests assume:
+
+Docker
+Postgres + pgvector
+Ollama running on host (host.docker.internal)
+Integration tests are explicitly skipped in CI
+Schema ingestion_service is created automatically by Alembic
+Alembic version table lives in the same schema
+
+ps note for future we may need to add this in migrations\env.py
+#to Guard autogenerate in CI
+#If you ever run alembic revision --autogenerate in CI, #add:
+if os.environ.get("CI") == "true":
+    context.configure(
+        compare_type=False,
+        compare_server_default=False,
+    )
+
+
+Below is the **exact sequence** for **PowerShell on Windows**.
+
+---
+
+## ✅ One-time prerequisites (verify once)
+
+### 1️⃣ Docker Desktop running
+
+```powershell
+docker version
+```
+
+### 2️⃣ Ollama running on host
+
+```powershell
+ollama list
+```
+
+(If this works, `http://localhost:11434` is alive — Docker will reach it via `host.docker.internal`.)
+
+---
+
+## 🧪 MS2-IS4: Exact execution sequence
+
+### 📍 From repo root (`rag-foundry-docgraph`)
+
+---
+
+### **Step 1 — Start integration test stack**
+
+```powershell
+docker compose -f docker-compose.test.yml up -d --build
+```
+
+What this does:
+
+* starts **Postgres + pgvector**
+* builds + starts **ingestion_service**
+* waits for DB healthcheck
+* does **not** start Ollama (correct)
+
+---
+
+### **Step 2 — Verify containers are healthy**
+
+```powershell
+docker ps
+```
+
+You should see at least:
+
+* `ingestion-db-test`
+* `ingestion_service`
+
+Status should be `healthy` (or running for ingestion_service).
+
+---
+
+### **Step 3 — Run Alembic migrations (inside ingestion_service container)**
+
+This is critical for **MS2-IS4**.
+
+```powershell
+docker compose -f docker-compose.test.yml exec ingestion_service `
+  alembic upgrade head
+```
+
+Expected:
+
+* schema `ingestion_service` exists
+* `document_nodes` table exists
+* pgvector extension enabled (via migrations)
+
+If this fails → **that’s the bug MS2-IS4 is meant to catch**.
+
+---
+
+### **Step 4 — Run integration tests from host**
+
+Still from repo root:
+
+```powershell
+uv run pytest ingestion_service -m "integration"
+```
+
+✔ Uses:
+
+* Dockerized Postgres
+* Real pgvector
+* Real Ollama embeddings
+* Your `conftest.py` DB session
+
+❌ Skips unit tests
+❌ Skips CI-only tests
+
+---
+
+## 🧼 Optional cleanup (recommended)
+
+When done:
+
+```powershell
+docker compose -f docker-compose.test.yml down -v
+```
+
+Removes:
+
+* containers
+* test volumes
+* clean slate next time
+
+---
+
+## 🔎 If something fails — fast diagnostics
+
+### Check DB tables
+
+```powershell
+docker compose -f docker-compose.test.yml exec postgres psql `
+  -U ingestion_user -d ingestion_test
+```
+
+```sql
+\dt ingestion_service.*;
+```
+
+---
+
+### Check ingestion_service logs
+
+```powershell
+docker logs ingestion_service
+```
+
+---
+
+## 
+
+| Step              | Runs where | Purpose                 |
+| ----------------- | ---------- | ----------------------- |
+| docker compose up | Docker     | Reality (DB + pgvector) |
+| alembic upgrade   | Docker     | Schema truth            |
+| pytest            | Host       | Code correctness        |
+
+---
+
