@@ -249,3 +249,33 @@ It activates document structure **without sacrificing determinism**, setting the
 ---
 
 
+## Behavioral Guardrails & Explicit Constraints (MS4-IS6)
+
+This section makes the MS4 behavior change **explicit and safe** for future developers.
+
+### Key Invariants
+
+- **Expansion depth**: always 1-hop
+- **Directionality**: outgoing relationships only
+- **Deterministic**: same input → same plan
+- **No recursive traversal**: cycles and multi-hop expansion are disallowed
+- **Planner is read-only**: does not perform DB writes
+- **No ranking or scoring**: influences only candidate selection
+- **Inspectability**: `RetrievalPlan` objects can be serialized and examined
+
+### Developer Guidance
+
+- Retrieval execution logic remains **unchanged**
+- Planner is a **pre-execution phase**
+- Unit tests cover all planner behaviors
+- Integration tests validate DB-backed expansion end-to-end
+- Any future modifications that violate these invariants are considered **scope creep**
+
+### Summary
+
+MS4 introduces a **deterministic, bounded, test-covered** retrieval planning phase:
+
+- Relationships influence **what may be retrieved**
+- Execution **how** documents are retrieved remains unchanged
+- Ensures safe, predictable behavior and a clear foundation for future graph-aware retrieval
+
