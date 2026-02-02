@@ -96,11 +96,82 @@ rag-foundry-docgraph/
 
 ---
 
-## 7. Next Steps
 
-1. Review and finalize project plan.
-2. Create ADR placeholders in `docs/adr/`.
-3. Prepare first migration for `DocumentNodes` table.
-4. Start Milestone 2: Document Nodes implementation (no behavior change).
+---
 
+### 🔄 Project Plan Amendment (Post-MS4 Clarification)
+
+**Date:** 2026-02-XX
+**Reason:** Architectural clarity after MS4 implementation
+
+During MS3–MS4, the system architecture evolved to explicitly separate **retrieval planning** from **retrieval execution**. This distinction was not fully articulated in the original milestone descriptions but has become foundational to the system’s design.
+
+The project plan is amended to reflect this clarification.
+
+---
+
+### 🔹 Updated Milestone Definitions
+
+| Milestone          | Refined Description                                                              |
+| ------------------ | -------------------------------------------------------------------------------- |
+| **MS3**            | Persisted document relationships (graph structure only, no behavior change)      |
+| **MS4**            | **Retrieval planning** — relationship-aware, deterministic, bounded, inspectable |
+| **MS5**            | **Retrieval execution & context assembly** driven strictly by RetrievalPlan      |
+| **MS6 (Optional)** | Agent / orchestration integration (non-core, future work)                        |
+
+---
+
+### 🔹 Clarified Architectural Contract
+
+The retrieval pipeline is now explicitly divided into two phases:
+
+1. **Retrieval Planning**
+
+   * Determines *which documents are eligible*
+   * Uses relationships, rules, and constraints
+   * Produces a serializable `RetrievalPlan`
+   * No embeddings, no chunk access
+
+2. **Retrieval Execution**
+
+   * Consumes a `RetrievalPlan`
+   * Fetches chunks only from eligible documents
+   * Performs semantic ranking and scoring
+   * Assembles bounded LLM context
+
+This separation ensures:
+
+* Deterministic behavior
+* Auditable reasoning
+* Controlled context growth
+* Safe future extensibility
+
+---
+
+### 🔹 Project Success Definition (Updated)
+
+The project is considered **functionally complete** when:
+
+* Relationships influence retrieval **via planning**
+* Execution respects the plan strictly
+* Retrieval remains bounded, deterministic, and explainable
+* Agents reason over *structured context*, not raw recall
+
+---
+
+## Do we *need* to do this?
+
+Technically: **no**
+Practically: **yes**
+
+Because:
+
+* Future-you will thank you
+* New contributors won’t misinterpret MS4 vs MS5
+* The plan now matches the **actual architecture**
+* You’ve captured the key insight from the GraphRAG post:
+
+  > *planning is the behavior change — execution just follows orders*
+
+---
 
