@@ -3,10 +3,13 @@
 from __future__ import annotations
 from typing import Any, Optional
 import logging
+from uuid import uuid4, UUID
 
 from shared.chunks import Chunk
 from shared.chunkers.base import BaseChunker
 from shared.chunkers.selector import ChunkerFactory
+from ingestion_service.src.core.database_session import get_sessionmaker
+from ingestion_service.src.core.crud.crud_document_node import create_document_node
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -63,12 +66,28 @@ class IngestionPipeline:
     ) -> None:
         """
         Pipeline for pre-chunked content: embed → persist.
-
         Use this for PDFs or other content where chunking happened
         upstream (e.g., via PDFChunkAssembler).
         """
+        # MS6-IS1: Create DocumentNode for provenance (title-only)
+        sessionmaker = get_sessionmaker()
+        with sessionmaker() as session:
+            document_id = uuid4()
+            # Use first chunk's source_metadata for title/filename
+            title = chunks[0].metadata.get("filename", "untitled") if chunks else "untitled"
+            create_document_node(
+                session,
+                document_id=document_id,
+                title=title,
+                summary="Document summary pending MS7",
+                source=title,
+                ingestion_id=UUID(ingestion_id),
+                doc_type="file",
+            )
+            logging.info(f"Created DocumentNode {document_id} for ingestion {ingestion_id}")
+        
         embeddings = self._embed(chunks)
-        self._persist(chunks, embeddings, ingestion_id)
+        self._persist(chunks, embeddings, ingestion_id, str(document_id))
 
     def _validate(self, text: str) -> None:
         """Validate input text (currently no-op)."""
@@ -130,6 +149,7 @@ class IngestionPipeline:
         chunks: list[Chunk],
         embeddings: list[Any],
         ingestion_id: str,
+        document_id: str,  # MS6-IS1: Link chunks to DocumentNode
     ) -> None:
         """
         Persist chunks and embeddings to vector store.
@@ -138,4 +158,5 @@ class IngestionPipeline:
             chunks=chunks,
             embeddings=embeddings,
             ingestion_id=ingestion_id,
+            document_id=document_id,  # MS6-IS1: Pass to vector store
         )
