@@ -37,8 +37,14 @@ async def rag_endpoint(rag_query: RAGQuery):
 
     try:
         # Call the service layer to perform the full RAG process
+        #result = await run_rag(
+        #    rag_query.query, rag_query.top_k, rag_query.provider, rag_query.model
+        #)
         result = await run_rag(
-            rag_query.query, rag_query.top_k, rag_query.provider, rag_query.model
+        query=rag_query.query,
+        top_k=rag_query.top_k,
+        provider=rag_query.provider,
+        model=rag_query.model
         )
         return result
 
