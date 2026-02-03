@@ -3,7 +3,7 @@
 import logging
 
 from src.api.v1.models import RAGQuery, RAGResponse, SearchQuery
-from src.core.service import run_rag, search_documents
+from src.core.service import run_rag#, search_documents
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
@@ -14,20 +14,20 @@ logger = logging.getLogger(__name__)
 
 
 # /search endpoint to get vector search results without invoking the LLM
-@router.post("/search")
-async def search_endpoint(query: SearchQuery):
-    logger.debug(f"Received search query: {query}")
+#@router.post("/search")
+#async def search_endpoint(query: SearchQuery):
+#    logger.debug(f"Received search query: {query}")
+#
+#    try:
+#        # Get search results from the service layer
+#        results = await search_documents(query.question, query.top_k)
+#        return {"results": results}
 
-    try:
-        # Get search results from the service layer
-        results = await search_documents(query.question, query.top_k)
-        return {"results": results}
-
-    except Exception as e:
-        logger.error(f"Error occurred while searching: {e}")
-        raise HTTPException(
-            status_code=500, detail="An error occurred during the search."
-        )
+#    except Exception as e:
+#        logger.error(f"Error occurred while searching: {e}")
+#        raise HTTPException(
+#            status_code=500, detail="An error occurred during the search."
+#        )
 
 
 # /rag endpoint to run the full RAG (retrieval-augmented generation) process

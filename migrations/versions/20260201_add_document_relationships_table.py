@@ -1,7 +1,7 @@
 """Add DocumentRelationship table with unique constraint
 
-Revision ID: 20260201_add_document_relationships_table
-Revises: 20260201_add_vector_chunks_table
+Revision ID: 20260201_rels
+Revises: 20260201_chunks
 Create Date: 2026-02-01
 """
 
@@ -9,8 +9,13 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = "20260201_add_document_relationships_table"
-down_revision = "20260201_add_vector_chunks_table"
+#revision = "20260201_add_document_relationships_table"
+#down_revision = "20260201_add_vector_chunks_table"
+
+revision = "20260201_rels"  # 12 chars ✓ (was "20260201_add_document_relationships_table")
+down_revision = "20260201_chunks"  # Update to match above
+
+
 branch_labels = None
 depends_on = None
 

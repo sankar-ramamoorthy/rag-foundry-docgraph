@@ -1,17 +1,21 @@
 """Add DocumentNodes table using pgvector (with summary embedding)
 
-Revision ID: 20260131_add_documentnodes_table
-Revises: 20251229_add_vectors_table
+Revision ID: 20260131_docnodes
+Revises: 20251229_vectors
 Create Date: 2026-01-31
 """
 
 from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
+#import sqlalchemy as sa
+#from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "20260131_add_documentnodes_table"
-down_revision = "20251229_add_vectors_table"
+#revision = "20260131_add_documentnodes_table"
+#down_revision = "20251229_add_vectors_table"
+
+revision = "20260131_docnodes"  # 16 chars ✓ (was "20260131_add_documentnodes_table")
+down_revision = "20251229_vectors"  # Update to match above
+
 branch_labels = None
 depends_on = None
 
