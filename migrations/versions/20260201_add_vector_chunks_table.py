@@ -1,15 +1,18 @@
 """Add VectorChunks table linked to DocumentNodes
 
-Revision ID: 20260201_add_vector_chunks_table
-Revises: 20260131_add_documentnodes_table
+Revision ID: 20260201_chunks
+Revises: 20260131_docnodes
 Create Date: 2026-02-01
 """
 
 from typing import Sequence, Union
 from alembic import op
 
-revision: str = "20260201_add_vector_chunks_table"
-down_revision: Union[str, Sequence[str], None] = "20260131_add_documentnodes_table"
+#revision: str = "20260201_add_vector_chunks_table"
+#down_revision: Union[str, Sequence[str], None] = "20260131_add_documentnodes_table"
+
+revision: str = "20260201_chunks"  # 16 chars ✓ (was "20260201_add_vector_chunks_table")
+down_revision: Union[str, Sequence[str], None] = "20260131_docnodes"  # Update to match 
 branch_labels = None
 depends_on = None
 
