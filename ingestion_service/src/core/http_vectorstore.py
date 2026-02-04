@@ -8,13 +8,14 @@ from shared.chunks import Chunk
 logger = logging.getLogger(__name__)
 
 class HttpVectorStore:
-    def __init__(self, base_url: str, provider: str = "mock"):
+    def __init__(self, base_url: str, provider: str = "ollama"):
         """
         :param base_url: Base URL of vector_store_service API
         :param provider: Embedding provider name
         """
         self.base_url = base_url.rstrip("/")
         self.provider = provider
+        logger.debug("ttpVectorStore init")
 
     def persist(
         self, 
@@ -26,6 +27,7 @@ class HttpVectorStore:
         """
         Dual-write: legacy vectors + new vector_chunks (MS6).
         """
+        logger.debug("HttpVectorStore persist")
         records = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             metadata_dict = dict(chunk.metadata or {})
@@ -44,9 +46,10 @@ class HttpVectorStore:
                     "provider": chunk.metadata.get("provider", self.provider),
                 },
             }
-            
+            logger.debug("HttpVectorStore persist document_id check")
             # MS6-IS2: Add document_id for new vector_chunks path
             if document_id:
+                logger.debug("HttpVectorStore persist document_id exists")
                 record["metadata"]["document_id"] = str(document_id)
             
             records.append(record)

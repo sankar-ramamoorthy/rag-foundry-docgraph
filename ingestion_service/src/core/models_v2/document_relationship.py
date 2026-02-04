@@ -9,10 +9,12 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime, func
 from sqlalchemy.orm import relationship
 from ingestion_service.src.core.models import Base
+import logging
+
 
 if TYPE_CHECKING:
     from .document_node import DocumentNode
-
+logger = logging.getLogger(__name__)
 class DocumentRelationship(Base):
     """
     Represents a relationship between two DocumentNodes.
@@ -29,6 +31,7 @@ class DocumentRelationship(Base):
     """
     __tablename__ = "document_relationships"
     __table_args__ = {"schema": "ingestion_service"}
+    logger.debug("DocumentRelationship Represents a relationship between two DocumentNodes.")
 
     id: int = Column(Integer, primary_key=True, autoincrement=True)
     from_document_id: str = Column(

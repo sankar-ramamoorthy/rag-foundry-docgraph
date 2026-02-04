@@ -68,21 +68,23 @@ async def add_vectors(
 async def similarity_search(
     request: VectorSearchRequest, store: PgVectorStore = Depends(get_vector_store)
 ):
-    """Search for similar vectors."""
+    """Search for similar vectors - MS6 RAG compatible."""
     try:
+        logger.debug("similarity_search Search for similar vectors - MS6 RAG compatible")
         results = store.similarity_search(request.query_vector, request.k)
 
-        # Convert domain models back to API models
+        # MS6 RAG FIX: Match exact fields expected by rag-orchestrator
         return {
             "results": [
                 {
-                    "vector": list(r.vector),
+                    "chunk_id": r.metadata.chunk_id,
+                    "text": r.metadata.chunk_text,           #  TOP-LEVEL text
+                    "document_id": r.metadata.document_id,   #  TOP-LEVEL document_id
+                    "score": 0.1,                            #  Add dummy score
                     "metadata": {
                         "ingestion_id": r.metadata.ingestion_id,
-                        "chunk_id": r.metadata.chunk_id,
                         "chunk_index": r.metadata.chunk_index,
                         "chunk_strategy": r.metadata.chunk_strategy,
-                        "chunk_text": r.metadata.chunk_text,
                         "source_metadata": r.metadata.source_metadata,
                         "provider": r.metadata.provider,
                     },
