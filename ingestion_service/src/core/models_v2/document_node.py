@@ -7,16 +7,16 @@ Includes bidirectional relationships to DocumentRelationship.
 from typing import TYPE_CHECKING
 from sqlalchemy import Column, String, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from core.models import Base
+from ingestion_service.src.core.models import Base
 import uuid
-
+import logging
 from pgvector.sqlalchemy import Vector  # pgvector type
 
 if TYPE_CHECKING:
     from .vector_chunk import VectorChunk
     from .document_relationship import DocumentRelationship
 
-
+logger = logging.getLogger(__name__)
 class DocumentNode(Base):
     """
     Represents a logical document, the unit of retrieval for structured RAG.
@@ -35,6 +35,7 @@ class DocumentNode(Base):
     """
     __tablename__ = "document_nodes"
     __table_args__ = {"schema": "ingestion_service"}
+    logger.debug("DocumentNode Represents a logical document, the unit of retrieval for structured RAG.")
 
     document_id: str = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     title: str = Column(String, nullable=False)

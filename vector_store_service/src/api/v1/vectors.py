@@ -5,14 +5,12 @@ from typing import List, Dict, Any, Optional
 import logging
 
 from src.core.vectorstore.pgvector_store import PgVectorStore
-from src.core.config import get_vector_store  # You'll need this dependency
+from src.core.config import get_vector_store
 from shared.models.vector import VectorRecord, VectorMetadata
 
 router = APIRouter(prefix="/v1/vectors", tags=["vectors"])
 logger = logging.getLogger(__name__)
 
-
-# Pydantic models for API (separate from domain models)
 class VectorMetadataAPI(BaseModel):
     ingestion_id: str
     chunk_id: str
@@ -21,21 +19,18 @@ class VectorMetadataAPI(BaseModel):
     chunk_text: str
     source_metadata: Optional[Dict[str, Any]] = {}
     provider: str = "mock"
-
+    document_id: Optional[str] = None  # MS6-IS3: NEW
 
 class VectorRecordAPI(BaseModel):
     vector: List[float]
     metadata: VectorMetadataAPI
 
-
 class VectorBatchRequest(BaseModel):
     records: List[VectorRecordAPI]
-
 
 class VectorSearchRequest(BaseModel):
     query_vector: List[float]
     k: int = 5
-
 
 @router.post("/batch")
 async def add_vectors(
@@ -43,7 +38,6 @@ async def add_vectors(
 ):
     """Add a batch of vectors to the store."""
     try:
-        # Convert API models to domain models
         domain_records = []
         for api_record in batch.records:
             metadata = VectorMetadata(
@@ -54,41 +48,43 @@ async def add_vectors(
                 chunk_text=api_record.metadata.chunk_text,
                 source_metadata=api_record.metadata.source_metadata,
                 provider=api_record.metadata.provider,
+                document_id=api_record.metadata.document_id,  # MS6-IS3: Pass through
             )
             domain_records.append(
                 VectorRecord(vector=api_record.vector, metadata=metadata)
             )
 
-        # Persist to database
         store.add(domain_records)
-
         logger.info(f"Added {len(domain_records)} vectors to store")
         return {"status": "ok", "count": len(domain_records)}
-
     except Exception as e:
         logger.error(f"Error adding vectors: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ... rest of file unchanged (search, delete endpoints)
 
 
 @router.post("/search")
 async def similarity_search(
     request: VectorSearchRequest, store: PgVectorStore = Depends(get_vector_store)
 ):
-    """Search for similar vectors."""
+    """Search for similar vectors - MS6 RAG compatible."""
     try:
+        logger.debug("similarity_search Search for similar vectors - MS6 RAG compatible")
         results = store.similarity_search(request.query_vector, request.k)
 
-        # Convert domain models back to API models
+        # MS6 RAG FIX: Match exact fields expected by rag-orchestrator
         return {
             "results": [
                 {
-                    "vector": list(r.vector),
+                    "chunk_id": r.metadata.chunk_id,
+                    "text": r.metadata.chunk_text,           #  TOP-LEVEL text
+                    "document_id": r.metadata.document_id,   #  TOP-LEVEL document_id
+                    "score": 0.1,                            #  Add dummy score
                     "metadata": {
                         "ingestion_id": r.metadata.ingestion_id,
-                        "chunk_id": r.metadata.chunk_id,
                         "chunk_index": r.metadata.chunk_index,
                         "chunk_strategy": r.metadata.chunk_strategy,
-                        "chunk_text": r.metadata.chunk_text,
                         "source_metadata": r.metadata.source_metadata,
                         "provider": r.metadata.provider,
                     },

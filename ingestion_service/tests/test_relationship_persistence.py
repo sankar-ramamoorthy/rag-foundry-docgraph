@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core.models_v2.document_node import DocumentNode
-from core.crud.document_relationships import (
+from ingestion_service.src.core.models_v2.document_node import DocumentNode
+from ingestion_service.src.core.crud.document_relationships import (
     create_document_relationship,
     list_relationships_for_document,
 )
