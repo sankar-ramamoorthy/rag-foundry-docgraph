@@ -2,10 +2,10 @@ import pytest
 from sqlalchemy.orm import Session
 import uuid
 
-from core.crud.document_relationships import create_document_relationship
-from core.crud.document_nodes import create_document_node
-from core.planners.relationship_expansion import expand_relationships_one_hop
-from core.models_v2.retrieval_plan import RetrievalPlan
+from ingestion_service.src.core.crud.document_relationships import create_document_relationship
+from ingestion_service.src.core.crud.document_nodes import create_document_node
+from ingestion_service.src.core.planners.relationship_expansion import expand_relationships_one_hop
+from ingestion_service.src.core.models_v2.retrieval_plan import RetrievalPlan
 
 
 @pytest.mark.integration

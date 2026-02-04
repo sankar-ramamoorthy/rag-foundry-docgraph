@@ -14,6 +14,7 @@ class VectorMetadata:
     chunk_text: str
     source_metadata: Optional[Dict] = field(default_factory=dict)
     provider: str = "mock"  # New attribute for provider name
+    document_id: Optional[str] = None  # MS6-IS3: NEW
 
 
 @dataclass

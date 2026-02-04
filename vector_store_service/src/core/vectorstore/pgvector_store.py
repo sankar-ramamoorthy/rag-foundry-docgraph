@@ -32,7 +32,8 @@ class PgVectorStore(VectorStore):
     def dimension(self) -> int:
         return self._dimension
 
-    def persist(self, records: list[VectorRecord], ingestion_id: str) -> None:
+    #def persist(self, records: list[VectorRecord], ingestion_id: str) -> None:
+    def persist(self, records: list[VectorRecord]) -> None:
         """Store vector records - no knowledge of chunks needed."""
         self.add(records)
 

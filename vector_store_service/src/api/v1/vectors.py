@@ -5,14 +5,12 @@ from typing import List, Dict, Any, Optional
 import logging
 
 from src.core.vectorstore.pgvector_store import PgVectorStore
-from src.core.config import get_vector_store  # You'll need this dependency
+from src.core.config import get_vector_store
 from shared.models.vector import VectorRecord, VectorMetadata
 
 router = APIRouter(prefix="/v1/vectors", tags=["vectors"])
 logger = logging.getLogger(__name__)
 
-
-# Pydantic models for API (separate from domain models)
 class VectorMetadataAPI(BaseModel):
     ingestion_id: str
     chunk_id: str
@@ -21,21 +19,18 @@ class VectorMetadataAPI(BaseModel):
     chunk_text: str
     source_metadata: Optional[Dict[str, Any]] = {}
     provider: str = "mock"
-
+    document_id: Optional[str] = None  # MS6-IS3: NEW
 
 class VectorRecordAPI(BaseModel):
     vector: List[float]
     metadata: VectorMetadataAPI
 
-
 class VectorBatchRequest(BaseModel):
     records: List[VectorRecordAPI]
-
 
 class VectorSearchRequest(BaseModel):
     query_vector: List[float]
     k: int = 5
-
 
 @router.post("/batch")
 async def add_vectors(
@@ -43,7 +38,6 @@ async def add_vectors(
 ):
     """Add a batch of vectors to the store."""
     try:
-        # Convert API models to domain models
         domain_records = []
         for api_record in batch.records:
             metadata = VectorMetadata(
@@ -54,20 +48,20 @@ async def add_vectors(
                 chunk_text=api_record.metadata.chunk_text,
                 source_metadata=api_record.metadata.source_metadata,
                 provider=api_record.metadata.provider,
+                document_id=api_record.metadata.document_id,  # MS6-IS3: Pass through
             )
             domain_records.append(
                 VectorRecord(vector=api_record.vector, metadata=metadata)
             )
 
-        # Persist to database
         store.add(domain_records)
-
         logger.info(f"Added {len(domain_records)} vectors to store")
         return {"status": "ok", "count": len(domain_records)}
-
     except Exception as e:
         logger.error(f"Error adding vectors: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ... rest of file unchanged (search, delete endpoints)
 
 
 @router.post("/search")

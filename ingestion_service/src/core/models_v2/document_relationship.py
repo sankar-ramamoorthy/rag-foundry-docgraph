@@ -8,11 +8,10 @@ from typing import TYPE_CHECKING
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime, func
 from sqlalchemy.orm import relationship
-from core.models import Base
+from ingestion_service.src.core.models import Base
 
 if TYPE_CHECKING:
     from .document_node import DocumentNode
-
 
 class DocumentRelationship(Base):
     """
@@ -23,7 +22,7 @@ class DocumentRelationship(Base):
         from_document_id: source DocumentNode
         to_document_id: target DocumentNode
         relation_type: type of relationship (e.g., "explains", "supports")
-        metadata: optional JSON metadata
+        relationship_metadata: optional JSON metadata  # ← FIXED
         created_at: timestamp of creation
         from_node: SQLAlchemy relationship to source DocumentNode
         to_node: SQLAlchemy relationship to target DocumentNode
@@ -41,7 +40,7 @@ class DocumentRelationship(Base):
         nullable=False
     )
     relation_type: str = Column(String, nullable=False)
-    metadata: dict = Column(JSON, nullable=False, default={})
+    relationship_metadata: dict = Column(JSON, nullable=False, default={})  # ← FIXED
     created_at: datetime = Column(DateTime(timezone=True), server_default=func.now())
 
     # Bidirectional relationships

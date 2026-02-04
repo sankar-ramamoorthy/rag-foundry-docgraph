@@ -4,10 +4,8 @@ from typing import List, Any
 import logging
 
 from shared.chunks import Chunk
-# from shared.models.vector import VectorRecord, VectorMetadata
 
 logger = logging.getLogger(__name__)
-
 
 class HttpVectorStore:
     def __init__(self, base_url: str, provider: str = "mock"):
@@ -19,10 +17,14 @@ class HttpVectorStore:
         self.provider = provider
 
     def persist(
-        self, chunks: List[Chunk], embeddings: List[Any], ingestion_id: str
+        self, 
+        chunks: List[Chunk], 
+        embeddings: List[Any], 
+        ingestion_id: str,
+        document_id: str = None,  # MS6-IS1: NEW - Link to DocumentNode
     ) -> None:
         """
-        Convert chunks+embeddings to VectorRecords and send to vector store.
+        Dual-write: legacy vectors + new vector_chunks (MS6).
         """
         records = []
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
@@ -42,10 +44,16 @@ class HttpVectorStore:
                     "provider": chunk.metadata.get("provider", self.provider),
                 },
             }
+            
+            # MS6-IS2: Add document_id for new vector_chunks path
+            if document_id:
+                record["metadata"]["document_id"] = str(document_id)
+            
             records.append(record)
 
+        # Dual-write to vector_store_service (handles both tables internally)
         self.add_vectors(records)
-        logger.info(f"Persisted {len(records)} vectors for ingestion {ingestion_id}")
+        logger.info(f"Persisted {len(records)} vectors for ingestion {ingestion_id}{' with document_id ' + document_id if document_id else ''}")
 
     def add_vectors(self, records: List[dict]):
         """Send a batch of vectors to vector_store_service."""

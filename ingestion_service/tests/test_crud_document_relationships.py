@@ -2,9 +2,9 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from core.models import Base
-from core.models_v2.document_node import DocumentNode
-from core.crud import document_relationships as crud
+from ingestion_service.src.core.models import Base
+from ingestion_service.src.core.models_v2.document_node import DocumentNode
+from ingestion_service.src.core.crud import document_relationships as crud
 
 # -----------------------------
 # Fixtures

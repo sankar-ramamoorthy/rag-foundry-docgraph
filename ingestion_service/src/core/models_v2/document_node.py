@@ -7,7 +7,7 @@ Includes bidirectional relationships to DocumentRelationship.
 from typing import TYPE_CHECKING
 from sqlalchemy import Column, String, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from core.models import Base
+from ingestion_service.src.core.models import Base
 import uuid
 
 from pgvector.sqlalchemy import Vector  # pgvector type
