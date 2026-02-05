@@ -1,6 +1,8 @@
-# src/ingestion_service/api/v1/ingest.py
-from uuid import uuid4
+# src/ingestion_service/api/v1/ingest.py - MS7-IS1 COMPLETE
+from uuid import uuid4, UUID
 import json
+import logging
+import httpx
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status
@@ -11,7 +13,6 @@ from ingestion_service.src.core.models import IngestionRequest
 from ingestion_service.src.core.pipeline import IngestionPipeline
 from ingestion_service.src.core.status_manager import StatusManager
 
-# from ingestion_service.src.core.vectorstore.pgvector_store import PgVectorStore
 from ingestion_service.src.core.http_vectorstore import HttpVectorStore
 from ingestion_service.src.core.config import get_settings
 from shared.embedders.factory import get_embedder
@@ -21,17 +22,21 @@ from ingestion_service.src.core.extractors.pdf import PDFExtractor
 # 🔽 NEW IMPORTS (MS4)
 from ingestion_service.src.core.document_graph.builder import DocumentGraphBuilder
 from ingestion_service.src.core.chunk_assembly.pdf_chunk_assembler import PDFChunkAssembler
+from ingestion_service.src.core.database_session import get_sessionmaker
+from ingestion_service.src.core.crud.crud_document_node import update_document_node_summary
 
 router = APIRouter(tags=["ingestion"])
 SessionLocal = get_sessionmaker()
 
+# 🔥 MS7: Logging setup
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class NoOpValidator:
     """Synchronous no-op validator."""
 
     def validate(self, text: str) -> None:
         return None
-
 
 def _build_pipeline(provider: str) -> IngestionPipeline:
     settings = get_settings()
@@ -42,12 +47,7 @@ def _build_pipeline(provider: str) -> IngestionPipeline:
         ollama_batch_size=settings.OLLAMA_BATCH_SIZE,
     )
 
-    # vector_store = PgVectorStore(
-    #    dsn=settings.DATABASE_URL,
-    #    dimension=getattr(embedder, "dimension", 3),
-    #    provider=provider,
-    # )
-    vector_store = HttpVectorStore(  # ✅ Call vector_store_service via HTTP
+    vector_store = HttpVectorStore(  
         base_url=settings.VECTOR_STORE_SERVICE_URL,
         provider=provider,
     )
@@ -57,7 +57,6 @@ def _build_pipeline(provider: str) -> IngestionPipeline:
         embedder=embedder,
         vector_store=vector_store,
     )
-
 
 def _extract_text_from_file(
     file: UploadFile, ocr_provider: Optional[str] = None
@@ -84,10 +83,40 @@ def _extract_text_from_file(
             detail="Unable to read uploaded text file as UTF-8",
         )
 
-
 # ---------------------------------------------------------------------------
 # API endpoints
 # ---------------------------------------------------------------------------
+@router.post("/summary")
+async def update_document_summary(request: dict):
+    """MS7-IS3: Update document_nodes.summary from llm-service."""
+    ingestion_id_str = request.get("ingestion_id")
+    summary = request.get("summary", "")
+    logger.debug("ingestion_service update_document_summary")
+    if not ingestion_id_str or not summary:
+        raise HTTPException(status_code=400, detail="Missing ingestion_id or summary")
+    
+    try:
+        ingestion_uuid = UUID(ingestion_id_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid ingestion_id")
+    
+    # 🔥 FIXED: Use models_v2 + SessionLocal
+    from ingestion_service.src.core.models_v2 import DocumentNode  # ✅ models_v2
+    
+    with SessionLocal() as session:  # ✅ SessionLocal works
+        doc = (session.query(DocumentNode)
+               .filter_by(ingestion_id=ingestion_uuid)
+               .first())
+        
+        if not doc:
+            logger.warning(f"MS7-IS3: No document found for {ingestion_id_str}")
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        doc.summary = summary
+        session.commit()
+        logger.info(f"✅ MS7-IS3: Summary SAVED for {ingestion_id_str}: {summary[:80]}...")
+    
+    return {"status": "summary_updated", "ingestion_id": ingestion_id_str}
 
 
 @router.post(
@@ -130,7 +159,6 @@ def ingest_json(request: IngestRequest) -> IngestResponse:
 
     return IngestResponse(ingestion_id=ingestion_id, status="accepted")
 
-
 @router.post(
     "/ingest/file",
     response_model=IngestResponse,
@@ -157,7 +185,6 @@ def ingest_file(
     filename: str = str(file.filename or "")
 
     is_pdf = filename.endswith(".pdf") or content_type == "application/pdf"
-
     pipeline = _build_pipeline(provider)
 
     # ------------------------------------------------------------------
@@ -191,19 +218,22 @@ def ingest_file(
             manager.mark_running(ingestion_id)
 
             try:
-                # ✅ Use public method instead of private methods
                 pipeline.run_with_chunks(
                     chunks=chunks,
                     ingestion_id=str(ingestion_id),
                 )
-
-                # embeddings = pipeline._embed(chunks)
-                # pipeline._persist(
-                #    chunks=chunks,
-                #    embeddings=embeddings,
-                #    ingestion_id=str(ingestion_id),
-                # )
                 manager.mark_completed(ingestion_id)
+                
+
+                # 🔥 MS7-IS1: Trigger LLM summary background task (PDF path)
+                summary_url = f"http://llm-service:8000/v1/summarize/{ingestion_id}"
+                logger.debug(f"ingestion_service ingest_file summary_url: {summary_url}")
+                try:
+                    httpx.post(summary_url, timeout=30)  # Fire-and-forget
+                    logger.info(f"✅ MS7: Summary task dispatched (PDF): {summary_url}")
+                except Exception as e:
+                    logger.warning(f"⚠️ MS7: Summary task failed to dispatch (PDF): {summary_url} - {e}")
+
             except Exception as exc:
                 manager.mark_failed(ingestion_id, error=str(exc))
                 raise HTTPException(
@@ -246,6 +276,15 @@ def ingest_file(
                 provider=provider,
             )
             manager.mark_completed(ingestion_id)
+            
+            # 🔥 MS7-IS1: Trigger LLM summary background task (TXT path)
+            summary_url = f"http://llm-service:8000/v1/summarize/{ingestion_id}"
+            try:
+                httpx.post(summary_url, timeout=30)  # Fire-and-forget
+                logger.info(f"✅ MS7: Summary task dispatched (TXT): {summary_url}")
+            except Exception as e:
+                logger.warning(f"⚠️ MS7: Summary task failed to dispatch (TXT): {summary_url} - {e}")
+
         except Exception as exc:
             manager.mark_failed(ingestion_id, error=str(exc))
             raise HTTPException(
@@ -254,7 +293,6 @@ def ingest_file(
 
     return IngestResponse(ingestion_id=ingestion_id, status="accepted")
 
-
 @router.get(
     "/ingest/{ingestion_id}",
     response_model=IngestResponse,
@@ -262,8 +300,6 @@ def ingest_file(
     summary="Get ingestion status",
 )
 def ingest_status(ingestion_id: str) -> IngestResponse:
-    from uuid import UUID
-
     try:
         ingestion_uuid = UUID(ingestion_id)
     except ValueError:
@@ -282,3 +318,5 @@ def ingest_status(ingestion_id: str) -> IngestResponse:
             ingestion_id=request.ingestion_id,
             status=request.status,
         )
+
+
