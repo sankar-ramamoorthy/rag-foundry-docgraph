@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Callable
 
 from .types import RetrievedContext
 from .agent_adapter import prepare_chunks_for_agent
-
+from .summary_adapter import fetch_summaries
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -68,21 +68,33 @@ class AgentPromptPipeline:
         """
         Flatten chunks into a single prompt string for the LLM,
         preserving provenance and deterministic order.
+        Prepend document summaries (conceptual layer) before chunks (evidence layer).
         """
 
-        chunks = self.build_prompt_input(retrieved, document_order=document_order)
+        # Step 0: Determine document order
+        if document_order is None:
+            document_order = sorted(retrieved.chunks_by_document.keys())
 
-        # Default template: concatenate chunk text
-        if template is None:
-            prompt_parts = []
-            for c in chunks:
+        # Step 1: Fetch summaries for these documents
+        summaries = fetch_summaries(document_order)
+
+        prompt_parts: List[str] = []
+
+        # Step 2: Add summaries first (conceptual layer)
+        for doc_id in document_order:
+            summary = summaries.get(doc_id)
+            if summary:
+                prompt_parts.append(f"[SUMMARY:{doc_id}] {summary}")
+
+        # Step 3: Add chunks next (evidence layer)
+        chunks = self.build_prompt_input(retrieved, document_order=document_order)
+        for c in chunks:
+            if template is None:
                 part = f"[{c['document_id']}/{c['chunk_id']}] {c['text']}"
-                prompt_parts.append(part)
-            return "\n\n".join(prompt_parts)
-        else:
-            # Template could be a callable or a string with placeholders
-            # Placeholder example: "{document_id}:{chunk_id}:{text}"
-            prompt_parts = []
-            for c in chunks:
-                prompt_parts.append(template.format(**c))
-            return "\n\n".join(prompt_parts)
+            else:
+                part = template.format(**c)
+            prompt_parts.append(part)
+
+        # Combine everything
+        return "\n\n".join(prompt_parts)
+
