@@ -39,13 +39,13 @@ def submit_ingest(source_type: str, file_obj):
                     f"{API_BASE_URL}/v1/ingest/file",
                     files={"file": f},
                     data={"metadata": metadata},
-                    timeout=10,
+                    timeout=60,
                 )
         else:
             response = requests.post(
                 f"{API_BASE_URL}/v1/ingest",
                 json={"source_type": source_type, "metadata": {}},
-                timeout=5,
+                timeout=35,
             )
 
         if response.status_code != 202:

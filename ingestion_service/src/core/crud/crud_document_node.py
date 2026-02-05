@@ -66,3 +66,17 @@ def list_document_nodes_by_ingestion(
         .order_by(DocumentNode.document_id)
         .all()
     )
+def update_document_node_summary(
+    session, ingestion_id: UUID, summary: str
+) -> bool:
+    """MS7-IS3: Update document_node.summary by ingestion_id."""
+    
+    doc = (session.query(DocumentNode)
+           .filter_by(ingestion_id=ingestion_id)
+           .first())
+    
+    if doc:
+        doc.summary = summary
+        session.commit()
+        return True
+    return False
