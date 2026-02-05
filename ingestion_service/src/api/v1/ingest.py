@@ -27,9 +27,13 @@ router = APIRouter(tags=["ingestion"])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------
 class NoOpValidator:
     def validate(self, text: str) -> None:
         return None
+
 
 def _build_pipeline(provider: str) -> IngestionPipeline:
     settings = get_settings()
@@ -49,78 +53,111 @@ def _build_pipeline(provider: str) -> IngestionPipeline:
         vector_store=vector_store,
     )
 
-def _extract_text_from_file(file: UploadFile, ocr_provider: Optional[str] = None) -> str:
-    content_type = file.content_type or ""
-    filename: str = str(file.filename or "")
-    file_bytes = file.file.read()
+
+def extract_text_from_bytes(
+    *,
+    file_bytes: bytes,
+    filename: str,
+    content_type: str,
+    ocr_provider: Optional[str],
+) -> str:
     if content_type.startswith("image/") or filename.endswith((".png", ".jpg", ".jpeg")):
         ocr_engine = get_ocr_engine(ocr_provider or "tesseract")
         return ocr_engine.extract_text(file_bytes) or ""
+
     try:
         return file_bytes.decode("utf-8")
     except Exception:
-        raise HTTPException(status_code=400, detail="Unable to read uploaded text file as UTF-8")
+        raise ValueError("Unable to decode file as UTF-8")
 
-# ----------------------------
-# Background ingestion
-# ----------------------------
-def background_ingest_file(ingestion_id: UUID, file: UploadFile, metadata: dict):
+
+# ---------------------------------------------------------------------
+# Background ingestion (PURE — no FastAPI objects)
+# ---------------------------------------------------------------------
+def background_ingest_file(
+    *,
+    ingestion_id: UUID,
+    file_bytes: bytes,
+    filename: str,
+    content_type: str,
+    metadata: dict,
+):
     settings = get_settings()
     provider = settings.EMBEDDING_PROVIDER
     pipeline = _build_pipeline(provider)
 
-    filename: str = str(file.filename or "")
-    is_pdf = filename.endswith(".pdf") or (file.content_type or "") == "application/pdf"
+    is_pdf = filename.endswith(".pdf") or content_type == "application/pdf"
     ocr_provider = metadata.get("ocr_provider")
 
     with SessionLocal() as session:
-        manager = StatusManager(session)
-        manager.mark_running(ingestion_id)
+        StatusManager(session).mark_running(ingestion_id)
 
     try:
         if is_pdf:
-            # PDF path
             pdf_extractor = PDFExtractor()
-            artifacts = pdf_extractor.extract(file_bytes=file.file.read(), source_name=filename)
+            artifacts = pdf_extractor.extract(
+                file_bytes=file_bytes,
+                source_name=filename,
+            )
+
             graph = DocumentGraphBuilder().build(artifacts)
             chunks = PDFChunkAssembler().assemble(graph)
 
             if not chunks:
-                raise Exception("No extractable text found in uploaded PDF")
+                raise RuntimeError("No extractable text found in uploaded PDF")
 
-            pipeline.run_with_chunks(chunks=chunks, ingestion_id=str(ingestion_id))
+            pipeline.run_with_chunks(
+                chunks=chunks,
+                ingestion_id=str(ingestion_id),
+            )
 
         else:
-            # Non-PDF path
-            file.file.seek(0)
-            text = _extract_text_from_file(file, ocr_provider)
+            text = extract_text_from_bytes(
+                file_bytes=file_bytes,
+                filename=filename,
+                content_type=content_type,
+                ocr_provider=ocr_provider,
+            )
+
             if not text.strip():
-                raise Exception("No extractable text found in uploaded file")
-            pipeline.run(text=text, ingestion_id=str(ingestion_id), source_type="file", provider=provider)
+                raise RuntimeError("No extractable text found in uploaded file")
+
+            pipeline.run(
+                text=text,
+                ingestion_id=str(ingestion_id),
+                source_type="file",
+                provider=provider,
+            )
 
         with SessionLocal() as session:
-            manager = StatusManager(session)
-            manager.mark_completed(ingestion_id)
+            StatusManager(session).mark_completed(ingestion_id)
 
-        # Trigger summary generation (fire-and-forget)
+        # Fire-and-forget summary
         summary_url = f"http://llm-service:8000/v1/summarize/{ingestion_id}"
         try:
-            httpx.post(summary_url, timeout=15)  # 🔹 laptop-friendly timeout
+            httpx.post(summary_url, timeout=15)
             logger.info(f"✅ Summary task dispatched: {summary_url}")
         except Exception as e:
-            logger.warning(f"⚠️ Summary dispatch failed: {summary_url} - {e}")
+            logger.warning(f"⚠️ Summary dispatch failed: {e}")
 
     except Exception as exc:
         with SessionLocal() as session:
-            manager = StatusManager(session)
-            manager.mark_failed(ingestion_id, error=str(exc))
+            StatusManager(session).mark_failed(ingestion_id, error=str(exc))
         logger.error(f"❌ Background ingestion failed: {ingestion_id} - {exc}")
 
-# ----------------------------
+
+# ---------------------------------------------------------------------
 # API endpoints
-# ----------------------------
-@router.post("/ingest/file", response_model=IngestResponse, status_code=status.HTTP_202_ACCEPTED)
-def ingest_file(file: UploadFile = File(...), metadata: Optional[str] = Form(default=None)) -> IngestResponse:
+# ---------------------------------------------------------------------
+@router.post(
+    "/ingest/file",
+    response_model=IngestResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def ingest_file(
+    file: UploadFile = File(...),
+    metadata: Optional[str] = Form(default=None),
+) -> IngestResponse:
     try:
         parsed_metadata = json.loads(metadata) if metadata else {}
     except json.JSONDecodeError as exc:
@@ -128,16 +165,40 @@ def ingest_file(file: UploadFile = File(...), metadata: Optional[str] = Form(def
 
     ingestion_id = uuid4()
 
+    # 🔑 CRITICAL: materialize bytes BEFORE returning
+    file_bytes = file.file.read()
+    filename = file.filename or "unknown"
+    content_type = file.content_type or "application/octet-stream"
+
     with SessionLocal() as session:
-        manager = StatusManager(session)
-        manager.create_request(ingestion_id=ingestion_id, source_type="file", metadata=parsed_metadata)
+        StatusManager(session).create_request(
+            ingestion_id=ingestion_id,
+            source_type="file",
+            metadata=parsed_metadata,
+        )
 
-    # Fire background ingestion thread
-    threading.Thread(target=background_ingest_file, args=(ingestion_id, file, parsed_metadata), daemon=True).start()
+    threading.Thread(
+        target=background_ingest_file,
+        kwargs={
+            "ingestion_id": ingestion_id,
+            "file_bytes": file_bytes,
+            "filename": filename,
+            "content_type": content_type,
+            "metadata": parsed_metadata,
+        },
+        daemon=True,
+    ).start()
 
-    return IngestResponse(ingestion_id=ingestion_id, status="accepted")
+    return IngestResponse(
+        ingestion_id=ingestion_id,
+        status="accepted",
+    )
 
-@router.get("/ingest/{ingestion_id}", response_model=IngestResponse)
+
+@router.get(
+    "/ingest/{ingestion_id}",
+    response_model=IngestResponse,
+)
 def ingest_status(ingestion_id: str) -> IngestResponse:
     try:
         ingestion_uuid = UUID(ingestion_id)
@@ -145,13 +206,15 @@ def ingest_status(ingestion_id: str) -> IngestResponse:
         raise HTTPException(status_code=400, detail="Invalid ingestion ID format")
 
     with SessionLocal() as session:
-        request = session.query(IngestionRequest).filter_by(ingestion_id=ingestion_uuid).first()
+        request = (
+            session.query(IngestionRequest)
+            .filter_by(ingestion_id=ingestion_uuid)
+            .first()
+        )
         if request is None:
             raise HTTPException(status_code=404, detail="Ingestion ID not found")
+
         return IngestResponse(
             ingestion_id=request.ingestion_id,
             status=request.status,
-            created_at=request.created_at,
-            started_at=request.started_at,
-            finished_at=request.finished_at,
         )

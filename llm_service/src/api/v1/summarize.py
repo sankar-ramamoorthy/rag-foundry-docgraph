@@ -30,7 +30,7 @@ async def fetch_chunks(ingestion_id: str) -> List[str]:
     
     payload = {"query_vector": dummy_vector, "k": 1000}
     
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient( timeout=90) as client:
         resp = await client.post(search_url, json=payload)
         resp.raise_for_status()
         results = resp.json().get("results", [])

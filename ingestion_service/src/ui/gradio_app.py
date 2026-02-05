@@ -93,7 +93,7 @@ def submit_rag_query(query: str, top_k: int, provider: str | None, model: str | 
         response = requests.post(
             f"{RAG_API_BASE_URL}/v1/rag",
             json=payload,
-            timeout=30,
+             timeout=90,
         )
         response.raise_for_status()
         data = response.json()
