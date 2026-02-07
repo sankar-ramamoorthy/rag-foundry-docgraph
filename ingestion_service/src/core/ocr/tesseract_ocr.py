@@ -4,7 +4,7 @@ from PIL import Image
 import pytesseract
 import io
 
-from ingestion_service.src.core.ocr.ocr import OCRExtractor
+from src.core.ocr.ocr import OCRExtractor
 
 
 class TesseractOCR(OCRExtractor):

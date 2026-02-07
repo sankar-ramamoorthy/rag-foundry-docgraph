@@ -7,7 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from ingestion_service.src.core.models import IngestionRequest
+from src.core.models import IngestionRequest
 
 
 class StatusManager:

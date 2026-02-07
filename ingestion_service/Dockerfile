@@ -14,7 +14,7 @@ COPY migrations /app/migrations
 
 # System deps
 RUN apt-get update && \
-    apt-get install -y postgresql-client tesseract-ocr && \
+    apt-get install -y postgresql-client tesseract-ocr curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Install deps once from repo root

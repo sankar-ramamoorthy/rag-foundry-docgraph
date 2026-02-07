@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette import status
 
-from ingestion_service.src.api.v1.models import ErrorResponse
+from src.api.v1.models import ErrorResponse
 
 
 def register_error_handlers(app) -> None:

@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from ingestion_service.src.core.config import get_settings
+from src.core.config import get_settings
 
 _engine = None
 _SessionLocal = None

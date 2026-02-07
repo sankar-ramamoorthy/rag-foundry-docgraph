@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 
-from ingestion_service.src.api.health import router as health_router
-from ingestion_service.src.api.v1 import router as v1_router
-from ingestion_service.src.api.errors import register_error_handlers
+from src.api.health import router as health_router
+from src.api.v1 import router as v1_router
+from src.api.errors import register_error_handlers
 
 # Register handlers before routers
 app = FastAPI(title="Rag Foundry")

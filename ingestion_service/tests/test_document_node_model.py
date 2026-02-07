@@ -1,6 +1,6 @@
 # tests/test_document_node_model.py
 import pytest
-from ingestion_service.src.core.models_v2.document_node import DocumentNode
+from src.core.models_v2.document_node import DocumentNode
 
 @pytest.mark.docker
 @pytest.mark.integration

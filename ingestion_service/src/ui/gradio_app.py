@@ -24,13 +24,13 @@ def submit_ingest(source_type: str, file_obj):
                     f"{API_BASE_URL}/v1/ingest/file",
                     files={"file": f},
                     data={"metadata": metadata},
-                    timeout=60,
+                    timeout=500,
                 )
         else:
             response = requests.post(
                 f"{API_BASE_URL}/v1/ingest",
                 json={"source_type": source_type, "metadata": {}},
-                timeout=35,
+                timeout=120,
             )
 
         if response.status_code != 202:
@@ -93,7 +93,7 @@ def submit_rag_query(query: str, top_k: int, provider: str | None, model: str | 
         response = requests.post(
             f"{RAG_API_BASE_URL}/v1/rag",
             json=payload,
-             timeout=90,
+             timeout=300,
         )
         response.raise_for_status()
         data = response.json()

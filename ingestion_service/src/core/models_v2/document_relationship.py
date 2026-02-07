@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, ForeignKey, JSON, DateTime, func
 from sqlalchemy.orm import relationship
-from ingestion_service.src.core.models import Base
+from src.core.models import Base
 import logging
 
 

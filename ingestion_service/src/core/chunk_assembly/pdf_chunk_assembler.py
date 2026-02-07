@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Dict, List, Set
 
 from shared.chunks import Chunk
-from ingestion_service.src.core.document_graph.models import DocumentGraph
+from src.core.document_graph.models import DocumentGraph
 from shared.chunkers.selector import ChunkerFactory
 
 

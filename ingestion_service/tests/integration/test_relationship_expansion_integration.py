@@ -2,9 +2,9 @@
 import pytest
 import uuid
 
-from ingestion_service.src.core.crud.document_nodes import create_document_node
-from ingestion_service.src.core.crud.document_relationships import create_document_relationship
-from ingestion_service.src.core.planner import expand_retrieval_plan
+from src.core.crud.document_nodes import create_document_node
+from src.core.crud.document_relationships import create_document_relationship
+from src.core.planner import expand_retrieval_plan
 
 @pytest.mark.integration
 def test_relationship_expansion_affects_candidate_set(session):

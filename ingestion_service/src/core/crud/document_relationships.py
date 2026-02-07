@@ -9,7 +9,7 @@ on the database. No graph traversal, no validation, no business logic.
 from typing import List
 from sqlalchemy.orm import Session
 
-from ingestion_service.src.core.models_v2.document_relationship import DocumentRelationship
+from src.core.models_v2.document_relationship import DocumentRelationship
 
 
 def create_document_relationship(

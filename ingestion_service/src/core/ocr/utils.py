@@ -1,8 +1,8 @@
 # ingestion_service/src/core/ocr/utils.py
 import logging
 
-from ingestion_service.src.core.extractors.base import ExtractedArtifact
-from ingestion_service.src.core.ocr.ocr_factory import get_ocr_engine
+from src.core.extractors.base import ExtractedArtifact
+from src.core.ocr.ocr_factory import get_ocr_engine
 
 logger = logging.getLogger(__name__)
 

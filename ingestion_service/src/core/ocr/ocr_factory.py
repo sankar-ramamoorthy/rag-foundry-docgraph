@@ -3,9 +3,9 @@
 import os
 from typing import Dict
 
-from ingestion_service.src.core.ocr.ocr import OCRExtractor
-from ingestion_service.src.core.ocr.tesseract_ocr import TesseractOCR
-# from ingestion_service.src.core.ocr.paddle_ocr import PaddleOCRExtractor
+from src.core.ocr.ocr import OCRExtractor
+from src.core.ocr.tesseract_ocr import TesseractOCR
+# from src.core.ocr.paddle_ocr import PaddleOCRExtractor
 
 # Create single instances (heavy models) and reuse
 tesseract_ocr = TesseractOCR()

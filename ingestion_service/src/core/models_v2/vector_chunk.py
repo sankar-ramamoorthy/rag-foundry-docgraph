@@ -6,7 +6,7 @@ Represents embedding chunks linked to a DocumentNode.
 from typing import TYPE_CHECKING
 from sqlalchemy import Column, String, JSON, Integer, ForeignKey
 from sqlalchemy.orm import relationship
-from ingestion_service.src.core.models import Base
+from src.core.models import Base
 import uuid
 
 from pgvector.sqlalchemy import Vector  # pgvector type for SQLAlchemy

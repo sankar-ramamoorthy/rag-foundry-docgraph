@@ -23,7 +23,7 @@ def fetch_summaries(document_ids: List[str]) -> Dict[str, str]:
 
     for doc_id in document_ids:
         try:
-            resp = requests.get(f"{INGESTION_API_BASE_URL}/v1/summary/{doc_id}", timeout=5)
+            resp = requests.get(f"{INGESTION_API_BASE_URL}/v1/summary/{doc_id}", timeout=300)
             if resp.status_code == 200:
                 data = resp.json()
                 summary_text = data.get("summary")

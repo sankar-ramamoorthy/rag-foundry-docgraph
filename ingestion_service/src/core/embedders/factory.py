@@ -1,7 +1,7 @@
 # ingestion_service/src/core/embedders/factory.py
 from shared.embedders.mock import MockEmbedder
 from shared.embedders.ollama import OllamaEmbedder
-from ingestion_service.src.core.config import get_settings
+from src.core.config import get_settings
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
