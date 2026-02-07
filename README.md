@@ -132,3 +132,7 @@ MIT - Free for commercial use
 ***
 
 **RAG + OCR that actually works on real hardware.** Production-ready today.
+
+
+refer to 
+DOCS\detailed_architecture_20260207.md
