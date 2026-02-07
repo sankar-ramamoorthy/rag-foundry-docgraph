@@ -1,5 +1,3 @@
----
-
 # rag-foundry-docgraph
 
 **Project:** Enhanced RAG platform with structured document-graph knowledge modeling.
@@ -346,6 +344,3 @@ The system now has:
 ## License
 
 MIT
-```
-
----
