@@ -14,7 +14,7 @@ sys.path.insert(
 # -----------------------------------------------------
 # Import SQLAlchemy Base metadata
 # -----------------------------------------------------
-from src.core.models import Base
+from ingestion_service.src.core.models import Base
 
 # -----------------------------------------------------
 # Alembic config
