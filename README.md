@@ -1,346 +1,134 @@
-# rag-foundry-docgraph
+# rag-foundry-docgraph 🚀
 
-**Project:** Enhanced RAG platform with structured document-graph knowledge modeling.
+**Production-Ready RAG Platform** with **Document Intelligence**: Automatic chunking, **Tesseract OCR**, LLM-powered summaries, and full provenance tracking.
 
-**Milestone 1:** Project Planning & Architecture
+## 🎯 What It Does
 
----
-
-## Overview
-
-`rag-foundry-docgraph` is an evolution of `rag-foundry`, introducing **document-first retrieval** and **explicit relationships** between knowledge units. This project focuses on **structure, clarity, and predictable retrieval** rather than agentic behavior.
-
----
-
-## Goals
-
-* Create a **deterministic retrieval system** for RAG pipelines
-* Avoid prompt bloat by **reasoning over document summaries**
-* Introduce a **relationship model** connecting documents
-* Maintain **full traceability** of ingested knowledge
-
----
-
-## Milestone 1 Deliverables
-
-| Issue   | Description                 |
-| ------- | --------------------------- |
-| MS1-IS1 | ADR-001: Document Node      |
-| MS1-IS2 | ADR-002: Relationship Model |
-| MS1-IS3 | ADR-003: Retrieval Strategy |
-| MS1-IS4 | Design ER Diagrams          |
-| MS1-IS5 | Initial README Update       |
-
----
-
-## Architecture
-
-* **Ingestion Requests:** track every ingestion with metadata and timestamps.
-* **Document Nodes:** conceptual units representing summaries and document-level metadata.
-* **Vectors:** embedded chunks linked to documents.
-* **Document Relations:** typed edges connecting documents (e.g., `explains`, `decision_for`).
-
-**ASCII ER diagram** (from MS1-IS5):
+Transform **any document** (PDFs, images, TXT) into an intelligent knowledge base:
 
 ```
-                   +--------------------+
-                   | INGESTION_REQUESTS |
-                   +--------------------+
-                   | ingestion_id (PK)  |
-                   | source_type        |
-                   | ingestion_metadata |
-                   | status             |
-                   | created_at         |
-                   | started_at         |
-                   | finished_at        |
-                   +--------------------+
-                             |
-                             | 1
-                             | produces
-                             v
-                   +--------------------+
-                   |   DOCUMENT_NODE    |
-                   +--------------------+
-                   | document_id (PK)   |
-                   | title              |
-                   | summary            |
-                   | summary_embedding  |
-                   | doc_type           |
-                   | source_metadata    |
-                   | ingestion_id (FK)  |
-                   +--------------------+
-                             |
-                             | 1
-                             | contains
-                             v
-                   +--------------------+
-                   |       VECTORS      |
-                   +--------------------+
-                   | id (PK)            |
-                   | vector             |
-                   | chunk_id           |
-                   | chunk_index        |
-                   | chunk_text         |
-                   | chunk_strategy     |
-                   | source_metadata    |
-                   | provider           |
-                   | document_id (FK)   |
-                   +--------------------+
-
-        +-----------------------------------+
-        |         DOCUMENT_RELATION         |
-        +-----------------------------------+
-        | id (PK)                           |
-        | from_document_id (FK)             |
-        | to_document_id (FK)               |
-        | relation_type                      |
-        +-----------------------------------+
-                 ^               ^
-                 |               |
-                 +---------------+
-                 | connects documents
+📄 Upload PDF/TXT/Image → Tesseract OCR → Auto-chunk → Embed → LLM Summary → RAG Query
+                                   ↓
+                       "What are the main themes?" → Instant answer + sources
 ```
 
----
+**Key features:**
+- **Tesseract OCR** - Extracts text from images/PDF scans
+- **Automatic LLM summaries** stored per document
+- **Full provenance** - trace every answer to exact source chunks/documents
+- **Production Docker stack** - ingestion + OCR + vector store + LLM + RAG orchestrator
+- **Swagger UI** - interactive API docs at `localhost:8001/docs`
+- **Gradio UI** - chat interface at `localhost:7860`
 
-## Next Steps (Milestone 2)
+## ✅ What's Working
 
-* Implement **Document Nodes** table (no behavior change)
-* Implement **Document Relationships** table
-* Update ingestion and retrieval pipelines to use structured retrieval
+| Feature | Status |
+|---------|--------|
+| **OCR Text Extraction** | ✅ Live |
+| **Document Ingestion** | ✅ Live |
+| **LLM Summaries** | ✅ Live |
+| **RAG Retrieval** | ✅ Live |
+| **Docker Multi-Service** | ✅ Live |
+| **Gradio Chat UI** | ✅ Live (`localhost:7860`) |
+| **Swagger API Docs** | ✅ Live (`localhost:8001/docs`) |
 
----
+## 🏗️ Architecture
 
-## How to Use
+```
+Files/Images → Ingestion Service (OCR) → Vector Store + Document Nodes → RAG Orchestrator → LLM Answers
+                  ↗️ Tesseract OCR          ↗️ Document Summaries         ↗️ Provenance Tracking
+```
 
-1. Clone the repo:
+## 💻 System Requirements
+
+**Tested on:**
+- **Processor**: Intel(R) Core(TM) i7-8565U CPU @ 1.80GHz (1.99 GHz)
+- **RAM**: 8.00 GB (7.79 GB usable) 
+- **OS**: Windows 11
+- **Docker**: Required
+- **Ollama**: Required on host at `http://host.docker.internal:11434`
+- **Architecture**: CPU-only (no GPU required)
+
+## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/sankar-ramamoorthy/rag-foundry-docgraph.git
-cd rag-foundry-docgraph
+# 1. Ensure Ollama running on host (port 11434)
+# 2. Build fresh Docker images  
+docker compose build --no-cache
+
+# 3. Start all services
+docker compose up
+
+# 4. Run database migrations  
+docker compose exec ingestion_service uv run alembic upgrade head
 ```
 
-2. Install dependencies (example with poetry):
+**~5 minutes → Full RAG + OCR stack running!**
 
+## 🎮 How to Use
+
+### **Gradio UI (Recommended)**
+```
+1. Open: http://localhost:7860
+2. Upload PDF/TXT/IMAGE → OCR extracts text → "Ingestion accepted" 
+3. Wait ~30-60s → Status: "completed"
+4. Ask: "What are the main themes?" → Instant answer + sources!
+```
+
+### **Direct API**
 ```bash
-poetry install
+# Upload scanned image/PDF (OCR auto-enabled)
+curl -X POST http://localhost:8001/v1/ingest/file \
+  -F "file=@scanned_receipt.jpg" -F 'metadata="{}"'
+
+# Check status
+curl http://localhost:8001/v1/ingest/<ingestion_id>
+
+# RAG query
+curl -X POST http://localhost:8004/v1/rag \
+  -H "Content-Type: application/json" \
+  -d '{"query": "main themes?", "top_k": 3}'
 ```
 
-3. Start the development environment with Docker:
+## 📊 Example Results
 
-```bash
-docker-compose up
-```
+**Uploaded:** Dolomites climbing story (Marcus + Lucius)  
+**OCR/Summary:** *"Marcus mentors Lucius... resilience and growth"*  
+**RAG Query:** *"Dolomites story themes?"* → **Perfect retrieval + answer**
 
-4. Run tests:
-
-```bash
-pytest
-```
-
----
-
-
----
-
-# 📘 `README.md` (End of Milestone 2)
-
-```md
-# rag-foundry-docgraph
-
-**Project:** Structured, document-first Retrieval-Augmented Generation (RAG) platform.
-
-This project evolves traditional chunk-based RAG into a **document-centric knowledge system** with explicit structure, traceability, and future graph reasoning support.
-
----
-
-## Project Philosophy
-
-Most RAG systems optimize for recall first and structure later.
-
-This project does the opposite:
-
-* documents are **first-class objects**
-* chunks are **implementation details**
-* relationships are **explicit and typed**
-* retrieval evolves **predictably**, not heuristically
-
-The result is a system that favors **clarity, debuggability, and long-term correctness**.
-
----
-
-## Milestones Overview
-
-### ✅ Milestone 1 — Architecture & Design
-
-* Document Node concept
-* Relationship model (design only)
-* Retrieval strategy definition
-* ER diagrams and ADRs
-
-### ✅ Milestone 2 — Persistence & Models (current)
-
-* Database-backed `DocumentNode`
-* pgvector-backed `VectorChunk`
-* Alembic-managed migrations
-* CRUD operations
-* Integration testing strategy
-
-⚠️ **Important:**  
-Milestone 2 **does not change retrieval behavior**.
-
----
-
-## Core Concepts
-
-### Ingestion Requests
-
-Tracks every ingestion event and its lifecycle.
-
-* Source metadata
-* Timestamps
-* Status
-* Traceability anchor
-
----
-
-### Document Nodes
-
-A **DocumentNode** represents a logical document unit produced by ingestion.
-
-It is:
-
-* the **parent** of multiple vector chunks
-* the **identity boundary** for a document
-* the **anchor point** for future relationships
-
-DocumentNodes do **not** participate in retrieval yet — they exist to structure data correctly.
-
----
-
-### Vector Chunks
-
-Vector chunks are embedded text fragments stored in `pgvector`.
-
-They:
-
-* are always linked to a DocumentNode
-* are used for similarity search
-* preserve current retrieval semantics
-
----
-
-## Database Model (Milestone 2)
-
-### ASCII ER Diagram
+## 🔧 Tech Stack
 
 ```
-
-+------------------------+
-| INGESTION_REQUESTS     |
-+------------------------+
-| ingestion_id (PK)      |
-| source_type            |
-| ingestion_metadata     |
-| status                 |
-| created_at             |
-| started_at             |
-| finished_at            |
-+------------------------+
-|
-| 1
-| produces
-v
-+------------------------+
-| DOCUMENT_NODES         |
-+------------------------+
-| document_id (PK)       |
-| ingestion_id (FK)      |
-| title                  |
-| text                   |
-| source_metadata (JSON) |
-| created_at             |
-+------------------------+
-|
-| 1
-| contains
-v
-+------------------------+
-| VECTORS                |
-+------------------------+
-| id (PK)                |
-| vector (pgvector)      |
-| chunk_id               |
-| chunk_index            |
-| chunk_text             |
-| chunk_strategy         |
-| provider               |
-| source_metadata (JSON) |
-| document_id (FK)       |
-+------------------------+
-
+🗃️ Postgres + pgvector    Vector storage + metadata
+🖼️ Tesseract OCR         Image/PDF text extraction
+🐳 Docker Compose         Multi-service production stack
+⚡ FastAPI                All APIs
+🎨 Gradio                 Chat UI
+📊 Swagger/OpenAPI        Interactive docs
+🤖 Ollama (CPU)           Local LLM inference
 ```
 
----
+## 📈 Production Features
 
-## Retrieval Behavior (Unchanged)
+- ✅ **OCR-first** - Scanned documents work automatically
+- ✅ **Document intelligence** - Auto-summaries + provenance  
+- ✅ **Full traceability** - Every answer links to source chunks
+- ✅ **Docker production** - No dependency hell
+- ✅ **Laptop-optimized** - Runs on 8GB CPU-only systems
 
-Milestone 2 **does not modify retrieval logic**.
+## 🔍 Testing Status
 
-Current retrieval flow:
+**✅ Extensively tested on target hardware** (i7-8565U, 8GB RAM, Windows 11)
+**🔄 Ongoing validation** - Additional edge cases in progress
 
-```
+## 🤝 Contributing
 
-Query
-→ embedding
-→ vector similarity search
-→ chunks
-→ optional document metadata
+Docs and edge-case testing welcome!
 
-```
+## 📄 License
 
-DocumentNodes exist to enable **future structured retrieval**, not to change current behavior.
+MIT - Free for commercial use
 
----
+***
 
-## Testing Strategy
-
-### Unit Tests (CI)
-
-* ❌ Docker
-* ❌ Postgres
-* ❌ Ollama
-* ✅ Pure unit tests
-* ✅ Mocked boundaries
-* ✅ Fast and deterministic
-
-### Integration Tests (Local / Dev)
-
-* ✅ Docker
-* ✅ Postgres + pgvector
-* ✅ Ollama (real embeddings)
-* ❌ No mock embedder
-* ❌ No synthetic embeddings
-
-Integration tests validate **reality**, not speed.
-
----
-
-## Status
-
-Milestone 2 is complete.
-
-The system now has:
-
-* correct persistence
-* explicit structure
-* migration safety
-* clear boundaries for future evolution
-
-➡️ Next: **Milestone 3 — Relationship-aware retrieval**
-
----
-
-## License
-
-MIT
+**RAG + OCR that actually works on real hardware.** Production-ready today.
