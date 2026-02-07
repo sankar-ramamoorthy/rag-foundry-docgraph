@@ -3,25 +3,10 @@ import os
 import json
 import requests
 import gradio as gr  # type: ignore
-from datetime import datetime
 
 # Base URLs for services (Docker-friendly)
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8001")
 RAG_API_BASE_URL = os.getenv("RAG_API_BASE_URL", "http://localhost:8004")
-
-
-# ----------------------------
-# Utility functions
-# ----------------------------
-def format_timestamp(ts: str | None) -> str:
-    """Format ISO timestamp string nicely, or return '-' if None."""
-    if ts is None:
-        return "-"
-    try:
-        dt = datetime.fromisoformat(ts)
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except Exception:
-        return ts  # fallback to raw string if parsing fails
 
 
 # ----------------------------
@@ -39,24 +24,20 @@ def submit_ingest(source_type: str, file_obj):
                     f"{API_BASE_URL}/v1/ingest/file",
                     files={"file": f},
                     data={"metadata": metadata},
-                    timeout=60,
+                    timeout=500,
                 )
         else:
             response = requests.post(
                 f"{API_BASE_URL}/v1/ingest",
                 json={"source_type": source_type, "metadata": {}},
-                timeout=35,
+                timeout=120,
             )
 
         if response.status_code != 202:
             return f"Error submitting ingestion: {response.text}"
 
         data = response.json()
-        created_at = format_timestamp(data.get("created_at"))
-        return (
-            f"Ingestion accepted.\nID: {data['ingestion_id']}\nCreated At: {created_at}"
-        )
-
+        return f"Ingestion accepted.\nID: {data['ingestion_id']}\nStatus: {data.get('status', '-')}"
     except Exception as exc:
         return f"Error submitting ingestion: {exc}"
 
@@ -69,21 +50,13 @@ def check_status(ingestion_id: str):
 
         response = requests.get(
             f"{API_BASE_URL}/v1/ingest/{ingestion_id}",
-            timeout=5,
+            timeout=10,
         )
 
         if response.status_code == 200:
             data = response.json()
             status = data.get("status", "-")
-            created = format_timestamp(data.get("created_at"))
-            started = format_timestamp(data.get("started_at"))
-            finished = format_timestamp(data.get("finished_at"))
-            return (
-                f"Status: {status}\n"
-                f"Created At: {created}\n"
-                f"Started At: {started}\n"
-                f"Finished At: {finished}"
-            )
+            return f"Status: {status}"
 
         # Any non-200 → show error cleanly
         try:
@@ -101,12 +74,7 @@ def check_status(ingestion_id: str):
 # ----------------------------
 # RAG query function
 # ----------------------------
-def submit_rag_query(
-    query: str,
-    top_k: int,
-    provider: str | None,
-    model: str | None,
-):
+def submit_rag_query(query: str, top_k: int, provider: str | None, model: str | None):
     """Submit a RAG query to the orchestrator."""
     try:
         if not query.strip():
@@ -125,21 +93,16 @@ def submit_rag_query(
         response = requests.post(
             f"{RAG_API_BASE_URL}/v1/rag",
             json=payload,
-            timeout=30,
+             timeout=300,
         )
-
         response.raise_for_status()
         data = response.json()
 
         answer = data.get("answer", "")
         sources = data.get("sources", [])
-
         formatted_sources = "\n".join(f"- {s}" for s in sources)
 
-        return (
-            f"Answer:\n{answer}\n\n"
-            f"Sources:\n{formatted_sources if formatted_sources else '-'}"
-        )
+        return f"Answer:\n{answer}\n\nSources:\n{formatted_sources if formatted_sources else '-'}"
 
     except Exception as exc:
         return f"Error querying RAG: {exc}"
@@ -151,11 +114,11 @@ def submit_rag_query(
 def build_ui():
     """Build the Gradio UI with ingestion + RAG query."""
     with gr.Blocks(title="Agentic RAG") as demo:  # type: ignore
+        gr.Markdown("# Agentic RAG Ingestion UI")  # type: ignore
+
         # ----------------------------
         # Ingestion section
         # ----------------------------
-        gr.Markdown("# Agentic RAG Ingestion UI")  # type: ignore
-
         with gr.Row():  # type: ignore
             source_type = gr.Dropdown(  # type: ignore
                 choices=["file", "bytes", "uri"],
@@ -188,7 +151,6 @@ def build_ui():
         # RAG query section
         # ----------------------------
         gr.Markdown("## Ask the RAG")  # type: ignore
-
         rag_query = gr.Textbox(  # type: ignore
             label="Question",
             placeholder="Ask a question about your ingested data...",

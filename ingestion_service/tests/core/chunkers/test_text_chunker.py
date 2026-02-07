@@ -1,6 +1,6 @@
 #ingestion_service\tests\core\chunkers\test_text_chunker.py
 import pytest
-from ingestion_service.src.core.chunkers.text import TextChunker
+from src.core.chunkers.text import TextChunker
 
 def test_simple_chunking():
     text = "a" * 1200

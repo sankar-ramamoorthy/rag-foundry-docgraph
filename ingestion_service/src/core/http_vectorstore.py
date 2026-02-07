@@ -61,7 +61,7 @@ class HttpVectorStore:
     def add_vectors(self, records: List[dict]):
         """Send a batch of vectors to vector_store_service."""
         url = f"{self.base_url}/v1/vectors/batch"
-        resp = requests.post(url, json={"records": records}, timeout=30)
+        resp = requests.post(url, json={"records": records},  timeout=90)
         resp.raise_for_status()
         return resp.json()
 
@@ -69,7 +69,7 @@ class HttpVectorStore:
         """Search the vector store for top-k similar vectors."""
         url = f"{self.base_url}/v1/vectors/search"
         resp = requests.post(
-            url, json={"query_vector": query_vector, "k": k}, timeout=30
+            url, json={"query_vector": query_vector, "k": k},  timeout=90
         )
         resp.raise_for_status()
         return resp.json()
@@ -77,6 +77,6 @@ class HttpVectorStore:
     def delete_by_ingestion_id(self, ingestion_id: str):
         """Delete all vectors for an ingestion_id."""
         url = f"{self.base_url}/v1/vectors/by-ingestion/{ingestion_id}"
-        resp = requests.delete(url, timeout=30)
+        resp = requests.delete(url,  timeout=90)
         resp.raise_for_status()
         return resp.status_code == 200

@@ -74,7 +74,7 @@ async def run_rag(
     search_url = f"{settings.VECTOR_STORE_URL}/v1/vectors/search"
     payload = {"query_vector": query_embedding, "k": top_k}
 
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient( timeout=120) as client:
         try:
             resp = await client.post(search_url, json=payload)
             resp.raise_for_status()
@@ -173,7 +173,7 @@ async def run_rag(
 
     llm_url = f"{settings.LLM_SERVICE_URL}/generate"
 
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient( timeout=120) as client:
         try:
             resp = await client.post(llm_url, json=llm_payload, params=params)
             resp.raise_for_status()

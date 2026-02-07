@@ -1,5 +1,5 @@
 import pytest
-from ingestion_service.src.core.database_session import get_engine
+from src.core.database_session import get_engine
 
 @pytest.mark.integration
 def test_document_nodes_table_exists_sql():

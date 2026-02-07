@@ -4,12 +4,12 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Dict, List
 
-from ingestion_service.src.core.document_graph.models import (
+from src.core.document_graph.models import (
     DocumentGraph,
     GraphEdge,
     GraphNode,
 )
-from ingestion_service.src.core.extractors.base import ExtractedArtifact
+from src.core.extractors.base import ExtractedArtifact
 
 
 class DocumentGraphBuilder:

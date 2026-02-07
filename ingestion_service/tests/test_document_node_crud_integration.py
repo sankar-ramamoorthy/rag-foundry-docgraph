@@ -4,7 +4,7 @@ import uuid
 import pytest
 from sqlalchemy import inspect
 
-from ingestion_service.src.core.crud import (
+from src.core.crud import (
     create_document_node,
     get_document_node,
 )

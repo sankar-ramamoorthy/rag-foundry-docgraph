@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Literal
 
-from ingestion_service.src.core.extractors.base import ExtractedArtifact
+from src.core.extractors.base import ExtractedArtifact
 
 RelationType = Literal[
     "image_to_text",

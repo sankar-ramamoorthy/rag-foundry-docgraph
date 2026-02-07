@@ -31,10 +31,12 @@ services:
       dockerfile: ingestion_service/Dockerfile
     container_name: ingestion-service
     ports:
-      - "8001:8001"
+      - "8001:8000"
     volumes:
-      - ./ingestion_service:/app/ingestion_service
+      - ./ingestion_service/src:/app/ingestion_service/src
       - ./shared:/app/shared
+    #  - ./ingestion_service:/app/ingestion_service
+    #  - ./shared:/app/shared
     env_file:
       - ./.env
     environment:

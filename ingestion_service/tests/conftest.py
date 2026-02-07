@@ -18,7 +18,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from ingestion_service.src.core.database_session import get_sessionmaker
+from src.core.database_session import get_sessionmaker
 
 # ---------------------------------------------------------------------
 # Path setup

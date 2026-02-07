@@ -16,8 +16,8 @@ Non-goals:
 from typing import List, Dict
 from sqlalchemy.orm import Session
 
-from ingestion_service.src.core.crud.document_relationships import list_relationships_for_document
-from ingestion_service.src.core.retrieval.retrieval_plan import RetrievalPlan
+from src.core.crud.document_relationships import list_relationships_for_document
+from src.core.retrieval.retrieval_plan import RetrievalPlan
 
 
 def expand_relationships_one_hop(

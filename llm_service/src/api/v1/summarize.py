@@ -30,7 +30,7 @@ async def fetch_chunks(ingestion_id: str) -> List[str]:
     
     payload = {"query_vector": dummy_vector, "k": 1000}
     
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient( timeout=90) as client:
         resp = await client.post(search_url, json=payload)
         resp.raise_for_status()
         results = resp.json().get("results", [])
@@ -51,7 +51,7 @@ async def update_document_summary(ingestion_id: str, summary: str):
     logger.debug(f"summarize.py update_document_summary : {ingestion_service_url}")
     logger.info(f"summarize.py update_document_summary : {ingestion_service_url}")
     logger.info(f"summarize.py update_document_summary summary is : {summary}")
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=100) as client:
         resp = await client.post(
             ingestion_service_url, 
             json={"ingestion_id": ingestion_id, "summary": summary}

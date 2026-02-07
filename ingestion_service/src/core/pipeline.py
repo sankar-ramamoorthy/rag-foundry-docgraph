@@ -4,13 +4,17 @@ from typing import Any, Optional
 import logging
 from uuid import uuid4, UUID
 
+
 from shared.chunks import Chunk
 from shared.chunkers.base import BaseChunker
 from shared.chunkers.selector import ChunkerFactory
-from ingestion_service.src.core.database_session import get_sessionmaker
-from ingestion_service.src.core.crud.crud_document_node import create_document_node
+from src.core.database_session import get_sessionmaker
+from src.core.crud.crud_document_node import create_document_node
+
 
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 class IngestionPipeline:
     """
@@ -47,26 +51,34 @@ class IngestionPipeline:
 
         Use this for simple text ingestion (TXT files).
         """
-        logging.debug(" pipeline.py run() - TEXT PATH - Full MS6 pipeline: validate → chunk → DocumentNode → embed → persist")
+        logger.debug("🔄 pipeline.py run() - TEXT PATH - Full MS6 pipeline: validate → chunk → DocumentNode → embed → persist")
         
         # MS6: Create DocumentNode FIRST (before any vectors)
         sessionmaker = get_sessionmaker()
         with sessionmaker() as session:
             document_id = uuid4()
-            title = f"{source_type}_document_{ingestion_id[:8]}"  # e.g., "file_document_a1b2c3d4"
-            logging.debug(f" MS6 run() Creating DocumentNode: {title} (doc_id={document_id})")
+            # 🔥 MS7 FIX: Use exact source format that summary.py expects
+            source = f"file_document_{ingestion_id}"  # Full UUID to match summary.py
+            title = f"{source_type}_document_{ingestion_id[:8]}"  # Keep title human-readable
+            
+            logger.debug(f"📝 MS6 run() Creating DocumentNode:")
+            logger.debug(f"   ingestion_id: {ingestion_id}")
+            logger.debug(f"   document_id: {document_id}")
+            logger.debug(f"   title: '{title}'")
+            logger.debug(f"   source: '{source}'")  # 🔥 MS7: This MUST match summary.py query
             
             create_document_node(
                 session,
                 document_id=document_id,
                 title=title,
                 summary="Document summary pending MS7",
-                source=title,
+                source=source,  # 🔥 MS7: Matches summary.py query
                 ingestion_id=UUID(ingestion_id),
                 doc_type=source_type,  # "file", "image", etc.
             )
             session.commit()  #  CRITICAL: Commit BEFORE vectors
-            logging.debug(f" MS6 run() DocumentNode COMMITTED {document_id} for {ingestion_id}")
+            logger.debug(f"✅ MS6 run() DocumentNode COMMITTED {document_id} for {ingestion_id}")
+            logger.debug(f"   → summary.py will look for source='{source}'")
 
         # Continue normal pipeline
         self._validate(text)
@@ -76,7 +88,7 @@ class IngestionPipeline:
             provider=provider,
         )
         embeddings = self._embed(chunks)
-        logging.debug(f" MS6 run() Persisting {len(chunks)} chunks with document_id={document_id}")
+        logger.debug(f"📦 MS6 run() Persisting {len(chunks)} chunks with document_id={document_id}")
         self._persist(chunks, embeddings, ingestion_id, str(document_id))
 
     def run_with_chunks(
@@ -89,36 +101,43 @@ class IngestionPipeline:
         Pipeline for pre-chunked content: DocumentNode → embed → persist (MS6).
         Use this for PDFs or other content where chunking happened upstream.
         """
-        logging.debug(f" pipeline.py run_with_chunks() - PDF PATH - {len(chunks)} pre-chunked items")
+        logger.debug(f"🔄 pipeline.py run_with_chunks() - PDF PATH - {len(chunks)} pre-chunked items")
         
         # MS6: Create DocumentNode FIRST
         sessionmaker = get_sessionmaker()
         with sessionmaker() as session:
             document_id = uuid4()
+            # 🔥 MS7 FIX: Use exact source format that summary.py expects
+            source = f"file_document_{ingestion_id}"  # Full UUID to match summary.py
             title = chunks[0].metadata.get("filename", "untitled") if chunks else "untitled"
-            logging.debug(f" MS6 run_with_chunks() Creating DocumentNode: {title} (doc_id={document_id})")
+            
+            logger.debug(f"📝 MS6 run_with_chunks() Creating DocumentNode:")
+            logger.debug(f"   ingestion_id: {ingestion_id}")
+            logger.debug(f"   document_id: {document_id}")
+            logger.debug(f"   title: '{title}'")
+            logger.debug(f"   source: '{source}'")  # 🔥 MS7: This MUST match summary.py query
             
             create_document_node(
                 session,
                 document_id=document_id,
                 title=title,
                 summary="Document summary pending MS7",
-                source=title,
+                source=source,  # 🔥 MS7: Matches summary.py query
                 ingestion_id=UUID(ingestion_id),
                 doc_type="file",
             )
             session.commit()  # 🔥 CRITICAL: Commit BEFORE vectors
-            logging.debug(f" MS6 run_with_chunks() DocumentNode COMMITTED {document_id} for {ingestion_id}")
+            logger.debug(f"✅ MS6 run_with_chunks() DocumentNode COMMITTED {document_id} for {ingestion_id}")
+            logger.debug(f"   → summary.py will look for source='{source}'")
 
         # Continue pipeline
         embeddings = self._embed(chunks)
-        logging.debug(f" MS6 run_with_chunks() Persisting {len(chunks)} chunks with document_id={document_id}")
+        logger.debug(f"📦 MS6 run_with_chunks() Persisting {len(chunks)} chunks with document_id={document_id}")
         self._persist(chunks, embeddings, ingestion_id, str(document_id))
 
     def _validate(self, text: str) -> None:
         """Validate input text (currently no-op)."""
-        logging.debug(" pipeline.py _validate()")
-        self._validator.validate(text)
+        logger.debug("✅ pipeline.py _validate() - No-op validator passed")
 
     def _chunk(
         self,
@@ -128,9 +147,9 @@ class IngestionPipeline:
     ) -> list[Chunk]:
         """
         Chunk text using selected strategy.
-        Adds metadata to each chunk for provenance.
+        Adds provenance metadata to each chunk for provenance.
         """
-        logging.debug(f" pipeline.py _chunk() text_len={len(text)} source_type={source_type}")
+        logger.debug(f"🔪 pipeline.py _chunk() text_len={len(text)} source_type={source_type}")
         
         if self._chunker is None:
             selected_chunker, chunker_params = ChunkerFactory.choose_strategy(text)
@@ -141,8 +160,11 @@ class IngestionPipeline:
         chunks: list[Chunk] = selected_chunker.chunk(text, **chunker_params)
         chunk_strategy = getattr(selected_chunker, "chunk_strategy", "unknown")
 
+        logger.debug(f"   → Selected chunker: {getattr(selected_chunker, 'name', selected_chunker.__class__.__name__)}")
+        logger.debug(f"   → Strategy: {chunk_strategy}, Chunks produced: {len(chunks)}")
+
         # Add provenance metadata to each chunk
-        for chunk in chunks:
+        for i, chunk in enumerate(chunks):
             chunk.metadata.update(
                 {
                     "chunk_strategy": chunk_strategy,
@@ -156,8 +178,8 @@ class IngestionPipeline:
                     "provider": provider,
                 }
             )
+            logger.debug(f"   → Chunk {i}: {len(chunk.content)} chars")
 
-        logging.debug(f" _chunk() produced {len(chunks)} chunks")
         return chunks
 
     def _embed(self, chunks: list[Chunk]) -> list[Any]:
@@ -165,7 +187,7 @@ class IngestionPipeline:
         Generate embeddings for chunks.
         Validates that embedding count matches chunk count.
         """
-        logging.debug(f" pipeline.py _embed() {len(chunks)} chunks")
+        logger.debug(f"🔗 pipeline.py _embed() {len(chunks)} chunks")
         embeddings = self._embedder.embed(chunks)
 
         if len(embeddings) != len(chunks):
@@ -173,7 +195,7 @@ class IngestionPipeline:
                 f"Embedder mismatch: {len(chunks)} chunks, {len(embeddings)} embeddings"
             )
 
-        logging.debug(f" _embed() produced {len(embeddings)} embeddings")
+        logger.debug(f"✅ _embed() produced {len(embeddings)} embeddings ({len(embeddings[0])} dims each)")
         return embeddings
 
     def _persist(
@@ -186,11 +208,12 @@ class IngestionPipeline:
         """
         Persist chunks and embeddings to vector store.
         """
-        logging.debug(f" pipeline.py _persist() {len(chunks)} chunks doc_id={document_id}")
+        logger.debug(f"💾 pipeline.py _persist() {len(chunks)} chunks doc_id={document_id}")
+        logger.debug(f"   → ingestion_id: {ingestion_id}")
         self._vector_store.persist(
             chunks=chunks,
             embeddings=embeddings,
             ingestion_id=ingestion_id,
             document_id=document_id,  # MS6-IS1: Pass to vector store
         )
-        logging.debug(f" _persist() COMPLETE for doc_id={document_id}")
+        logger.debug(f"✅ _persist() COMPLETE for doc_id={document_id}")

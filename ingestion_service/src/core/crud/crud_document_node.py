@@ -5,7 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from ingestion_service.src.core.models_v2.document_node import DocumentNode
+from src.core.models_v2.document_node import DocumentNode
 
 
 def create_document_node(

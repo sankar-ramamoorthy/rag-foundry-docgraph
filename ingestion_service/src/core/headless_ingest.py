@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Optional
 
-from ingestion_service.src.core.pipeline import IngestionPipeline
+from src.core.pipeline import IngestionPipeline
 from shared.models.vector import VectorRecord, VectorMetadata
 
 

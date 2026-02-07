@@ -1,12 +1,12 @@
 # src/ingestion_service/core/headless_ingest_pdf.py
 from __future__ import annotations
 from typing import List
-from ingestion_service.src.core.extractors.pdf import PDFExtractor
-from ingestion_service.src.core.document_graph.builder import DocumentGraphBuilder
-from ingestion_service.src.core.chunk_assembly.pdf_chunk_assembler import PDFChunkAssembler
-from ingestion_service.src.core.pipeline import IngestionPipeline
+from src.core.extractors.pdf import PDFExtractor
+from src.core.document_graph.builder import DocumentGraphBuilder
+from src.core.chunk_assembly.pdf_chunk_assembler import PDFChunkAssembler
+from src.core.pipeline import IngestionPipeline
 from shared.chunks import Chunk
-from ingestion_service.src.core.extractors.base import ExtractedArtifact
+from src.core.extractors.base import ExtractedArtifact
 
 
 class HeadlessPDFIngestor:
@@ -38,7 +38,7 @@ class HeadlessPDFIngestor:
 
             if artifact.type == "image" and artifact.image_bytes:
                 # Run OCR on image
-                from ingestion_service.src.core.ocr.utils import enrich_image_with_ocr
+                from src.core.ocr.utils import enrich_image_with_ocr
 
                 image_with_ocr = enrich_image_with_ocr(artifact, self.ocr_provider)
 

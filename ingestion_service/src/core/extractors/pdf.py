@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List, Tuple
 import fitz  # PyMuPDF
 
-from ingestion_service.src.core.extractors.base import DocumentExtractor, ExtractedArtifact
+from src.core.extractors.base import DocumentExtractor, ExtractedArtifact
 
 
 class PDFExtractor(DocumentExtractor):
