@@ -50,7 +50,7 @@ def _build_pipeline(provider: str) -> IngestionPipeline:
     )
 
 
-def extract_text_from_bytes(file_bytes: bytes, filename: str, content_type: str, ocr_provider: Optional[str]) -> str:
+def extract_text_from_bytes_bak(file_bytes: bytes, filename: str, content_type: str, ocr_provider: Optional[str]) -> str:
     if content_type.startswith("image/") or filename.endswith((".png", ".jpg", ".jpeg")):
         ocr_engine = get_ocr_engine(ocr_provider or "tesseract")
         return ocr_engine.extract_text(file_bytes) or ""
@@ -58,6 +58,30 @@ def extract_text_from_bytes(file_bytes: bytes, filename: str, content_type: str,
         return file_bytes.decode("utf-8")
     except Exception:
         raise ValueError("Unable to decode file as UTF-8")
+    
+def extract_text_from_bytes(file_bytes: bytes, filename: str, content_type: str, ocr_provider: Optional[str]) -> str:
+    # Images → OCR
+    if content_type.startswith("image/") or filename.lower().endswith((".png", ".jpg", ".jpeg", ".tiff")):
+        logger.info(f"🖼️ OCR processing: {filename}")
+        ocr_engine = get_ocr_engine(ocr_provider or "tesseract")
+        return ocr_engine.extract_text(file_bytes) or ""
+    
+    # Text files → Robust multi-encoding decoder
+    encodings = ['utf-8', 'utf-8-sig', 'windows-1252', 'latin-1', 'cp1252', 'iso-8859-1']
+    
+    for encoding in encodings:
+        try:
+            text = file_bytes.decode(encoding)
+            logger.debug(f"✅ Decoded {filename} as {encoding}")
+            return text
+        except UnicodeDecodeError:
+            logger.debug(f"Failed {encoding} for {filename}, trying next...")
+            continue
+    
+    # Final fallback: latin-1 ignores errors
+    logger.warning(f"⚠️ Using fallback decoder for {filename}")
+    return file_bytes.decode('latin-1', errors='ignore')
+
 
 
 # -----------------------------
